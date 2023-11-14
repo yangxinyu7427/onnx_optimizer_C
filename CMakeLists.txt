@@ -37,6 +37,7 @@ file(GLOB onnx_opt_srcs "onnxoptimizer/*.cc"
     "onnxoptimizer/*.h"
     "onnxoptimizer/passes/*.cc"
     "onnxoptimizer/passes/*.h"
+    "onnxoptimizer/query_c_api/*.cpp"
     )
 list(REMOVE_ITEM onnx_opt_srcs "${PROJECT_SOURCE_DIR}/onnxoptimizer/cpp2py_export.cc")
 
@@ -49,6 +50,8 @@ target_include_directories(onnx_optimizer PUBLIC
 
 onnxopt_add_executable(onnx_optimizer_exec examples/onnx_optimizer_exec.cpp)
 target_link_libraries(onnx_optimizer_exec onnx_optimizer)
+onnxopt_add_executable(optimizer_example examples/optimizer_c_example/optimize_example.cpp)
+target_link_libraries(optimizer_example onnx_optimizer)
 
 
 file(GLOB onnx_opt_c_api_srcs "onnxoptimizer/c_api/*.cc"
