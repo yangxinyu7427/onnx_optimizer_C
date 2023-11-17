@@ -36,9 +36,8 @@ void add_graph_prefix(
     }//end node
 
     for(auto & it_input:graph->input()){
-      std::string name=it_input.name();
-      if(input_names.find(name)==input_names.end())
-        name_map[name]= add_prefix(prefix,name);
+      if(input_names.find(it_input.name())==input_names.end())
+        name_map[it_input.name()]= add_prefix(prefix,it_input.name());
     }
 
   }else{
@@ -89,10 +88,28 @@ void add_graph_prefix(
         it_node.set_output(i,name_map[it_node.output(i)]);
   }
 
+  for(auto it_input:*graph->mutable_input())
+    if(name_map.find(it_input.name())!=name_map.end())
+      it_input.set_name(name_map[it_input.name()]);
 
+  for(auto it_output:*graph->mutable_output())
+    if(name_map.find(it_output.name())!=name_map.end())
+      it_output.set_name(name_map[it_output.name()]);
 
+  for(auto it_init:*graph->mutable_initializer())
+    if(name_map.find(it_init.name())!=name_map.end())
+      it_init.set_name(name_map[it_init.name()]);
 
+  for(auto it_sparse:*graph->mutable_sparse_initializer()){
+    if(name_map.find(it_sparse.values().name())!=name_map.end())
+      it_sparse.mutable_values()->set_name(name_map[it_sparse.values().name()]);
+    if(name_map.find(it_sparse.indices().name())!=name_map.end())
+      it_sparse.mutable_indices()->set_name(name_map[it_sparse.indices().name()]);
+  }
 
+  for(auto it_value_info:*graph->mutable_value_info())
+    if(name_map.find(it_value_info.name())!=name_map.end())
+      it_value_info.set_name(name_map[it_value_info.name()]);
 
 }
 
@@ -100,14 +117,107 @@ void add_model_prefix(
     ModelProto* model,
     std::string& prefix,
     ModelProto* model_with_prefix){
+
   model_with_prefix->CopyFrom(*model);
-  GraphProto graph;
-  graph.CopyFrom(model_with_prefix->graph());
   std::set<std::string> input_names;
   std::map<std::string,std::string> name_map;
-  add_graph_prefix(&graph,prefix,input_names,false,true,name_map);
+  add_graph_prefix(model_with_prefix->mutable_graph(),prefix,input_names,false,true,name_map);
+
+  std::map<std::string,std::string> f_name_map;
+  for(auto & it_func:*model_with_prefix->mutable_functions()){
+    f_name_map[it_func.name()]= add_prefix(prefix,it_func.name());
+    it_func.set_name(add_prefix(prefix,it_func.name()));
+  }
+
+  for(auto & it_func:*model_with_prefix->mutable_functions()) {
+    for(auto & it_node:*it_func.mutable_node()){
+      if(f_name_map.find(it_node.op_type())!=f_name_map.end()){
+        it_node.set_op_type(f_name_map[it_node.op_type()]);
+      }
+    }
+  }
+
+  for(auto & it_g_node:*model_with_prefix->mutable_graph()->mutable_node()){
+    if(f_name_map.find(it_g_node.op_type())!=f_name_map.end())
+      it_g_node.set_op_type(f_name_map[it_g_node.op_type()]);
+  }
+
 }
 
+void merge_project_graphs(
+    GraphProto* g1,
+    GraphProto* g2,
+    GraphProto* g_merged
+    ){
+  GraphProto g;
+  // add node
+  for(auto it_node:g1->node())
+    *g.add_node()=it_node;
+  for(auto it_node:g2->node())
+    *g.add_node()=it_node;
+
+  // add input
+  std::set<std::string> input_names;
+  for(auto it_input:g1->input())
+    if(input_names.find(it_input.name())==input_names.end()){
+      *g.add_input()=it_input;
+      input_names.insert(it_input.name());
+    }
+  for(auto it_input:g2->input())
+    if(input_names.find(it_input.name())==input_names.end()){
+      *g.add_input()=it_input;
+      input_names.insert(it_input.name());
+    }
+
+  // add output
+  for(auto it_output:g1->output())
+    *g.add_output()=it_output;
+  for(auto it_output:g2->output())
+    *g.add_output()=it_output;
+
+  // add init
+  for(auto it_init:g1->initializer())
+    *g.add_initializer()=it_init;
+  for(auto it_init:g2->initializer())
+    *g.add_initializer()=it_init;
+
+  // add sparse_initializer
+  for(auto it_sparse:g1->sparse_initializer())
+    *g.add_sparse_initializer()=it_sparse;
+  for(auto it_sparse:g2->sparse_initializer())
+    *g.add_sparse_initializer()=it_sparse;
+
+  // add value_info
+  for(auto it_value_info:g1->value_info())
+    *g.add_value_info()=it_value_info;
+  for(auto it_value_info:g2->value_info())
+    *g.add_value_info()=it_value_info;
+
+  // add name
+  std::string name=g1->mutable_name()->append("_");
+  name=name.append(g2->name());
+  g.set_name(name);
+
+  // add doc_string
+  g.set_doc_string("graph merged");
+
+  g_merged=&g;
+}
+
+ModelProto create_model(GraphProto* graph,
+                        int64_t ir_version,
+                        std::vector<OperatorSetIdProto> opset_import_list){
+  ModelProto model;
+  model.set_ir_version(ir_version);
+  model.mutable_graph()->CopyFrom(*graph);
+  for(auto it:opset_import_list)
+    *model.add_opset_import()=it;
+  model.set_model_version(1);
+  model.set_producer_name("onnx.expr_compose.merge_models");
+  model.set_producer_version("1.0");
+  model.set_domain("");
+  return model;
+}
 
 void model_merge(
     ModelProto* m1,
@@ -118,6 +228,7 @@ void model_merge(
   if (m1->ir_version()!=m2->ir_version()){
     std::cerr << "Warning: onnx ir versions are different! " << std::endl;
   }
+  auto ir_version=m1->ir_version();
   std::map<std::string,::onnx::OperatorSetIdProto> map={};
   for(const auto & it : m1->opset_import()){
     if(map.find(it.domain()) == map.end()){
@@ -157,10 +268,36 @@ void model_merge(
     opset_import_list.push_back(it.second);
   }
 
-  ModelProto m1_with_prefix,m2_with_prefix;
+  ModelProto *m1_with_prefix, *m2_with_prefix;
+  // add prefix
+  add_model_prefix(m1,mp_name1,m1_with_prefix);
+  add_model_prefix(m2,mp_name2,m2_with_prefix);
 
-  add_model_prefix(m1,mp_name1,&m1_with_prefix);
-  add_model_prefix(m2,mp_name2,&m2_with_prefix);
+  GraphProto* graph_merged;
+  merge_project_graphs(m1_with_prefix->mutable_graph(),m2_with_prefix->mutable_graph(),graph_merged);
+
+  ModelProto model=create_model(graph_merged,ir_version,opset_import_list);
+
+  // merge model metadata props
+  std::map<std::string,std::string> props_map;
+  for(auto it:m1_with_prefix->metadata_props())
+    props_map[it.key()]=it.value();
+  for(auto it:m2_with_prefix->metadata_props()){
+    if(props_map.find(it.key())!=props_map.end()){
+      std::string value=props_map[it.key()];
+      if(it.value()!=value)
+        std::cerr << "Can't merge models with different values for the same model metadata property." << std::endl;
+    }else
+      props_map[it.key()]=it.value();
+  }
+
+
+
 }
-}
-}
+
+
+
+
+
+}//end namespace
+}//end namespace
