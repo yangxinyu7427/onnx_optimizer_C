@@ -291,8 +291,20 @@ void model_merge(
       props_map[it.key()]=it.value();
   }
 
+  // add metadata_props
+  model.clear_metadata_props();
+  for(auto & it:props_map){
+    auto entry=model.add_metadata_props();
+    entry->set_key(it.first);
+    entry->set_value(it.second);
+  }
 
+  // merge functions
 
+  model.mutable_functions()->MergeFrom(*m1_with_prefix->mutable_functions());
+  model.mutable_functions()->MergeFrom(*m2_with_prefix->mutable_functions());
+  checker::check_model(model, false);
+  mp_merged=&model;
 }
 
 
