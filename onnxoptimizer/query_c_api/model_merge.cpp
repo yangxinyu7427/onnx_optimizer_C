@@ -3,11 +3,9 @@
 //
 #include <onnx/checker.h>
 #include <onnx/onnx_pb.h>
-#include <onnxoptimizer/model_util.h>
-#include <onnxoptimizer/optimize.h>
 
-namespace ONNX_NAMESPACE {
-namespace optimization {
+
+namespace onnx::optimization {
 
 std::string add_prefix(std::string prefix,std::string name){
   if(!name.empty())
@@ -80,7 +78,6 @@ void add_graph_prefix(
     name_map[it_value_info.name()]= add_prefix(prefix,it_value_info.name());
   }
 
-//  for(auto it_node:*graph->mutable_node()){
   for(int m=0;m<graph->node_size();m++){
     auto it_node=graph->mutable_node(m);
     for(int i=0;i<it_node->input_size();i++)
@@ -92,21 +89,18 @@ void add_graph_prefix(
         it_node->set_output(i,name_map[it_node->output(i)]);
   }
 
-  //for(auto it_input:*graph->mutable_input())
   for(int i=0;i<graph->input_size();i++){
     auto it_input=graph->mutable_input(i);
     if(name_map.find(it_input->name())!=name_map.end())
       it_input->set_name(name_map[it_input->name()]);
   }
 
-//  for(auto it_output:*graph->mutable_output())
   for(int i=0;i<graph->output_size();i++){
     auto it_output=graph->mutable_output(i);
     if(name_map.find(it_output->name())!=name_map.end())
       it_output->set_name(name_map[it_output->name()]);
   }
 
-  //for(auto it_init:*graph->mutable_initializer())
   for(int i=0;i<graph->initializer_size();i++){
     auto it_init=graph->mutable_initializer(i);
     if(name_map.find(it_init->name())!=name_map.end())
@@ -114,7 +108,6 @@ void add_graph_prefix(
   }
 
 
-  //for(auto it_sparse:*graph->mutable_sparse_initializer()){
   for(int i=0;i<graph->sparse_initializer_size();i++){
     auto it_sparse=graph->mutable_sparse_initializer(i);
     if(name_map.find(it_sparse->values().name())!=name_map.end())
@@ -123,7 +116,6 @@ void add_graph_prefix(
       it_sparse->mutable_indices()->set_name(name_map[it_sparse->indices().name()]);
   }
 
-  //for(auto it_value_info:*graph->mutable_value_info())
   for(int i=0;i<graph->value_info_size();i++){
     auto it_value_info=graph->mutable_value_info(i);
     if(name_map.find(it_value_info->name())!=name_map.end())
@@ -144,17 +136,15 @@ void add_model_prefix(
   add_graph_prefix(model_with_prefix->mutable_graph(),prefix,input_names,false,true,name_map);
 
   std::map<std::string,std::string> f_name_map;
-  //for(auto & it_func:*model_with_prefix->mutable_functions()){
   for(int i=0;i<model_with_prefix->functions_size();i++){
     auto it_func=model_with_prefix->mutable_functions(i);
     f_name_map[it_func->name()]= add_prefix(prefix,it_func->name());
     it_func->set_name(add_prefix(prefix,it_func->name()));
   }
 
-  //for(auto & it_func:*model_with_prefix->mutable_functions()) {
+
   for(int i=0;i<model_with_prefix->functions_size();i++){
     auto it_func=model_with_prefix->mutable_functions(i);
-//    for(auto & it_node:*it_func.mutable_node()){
     for(int m=0;m<it_func->node_size();m++){
       auto it_node=it_func->mutable_node(m);
       if(f_name_map.find(it_node->op_type())!=f_name_map.end()){
@@ -163,7 +153,6 @@ void add_model_prefix(
     }
   }
 
-  //for(auto & it_g_node:*model_with_prefix->mutable_graph()->mutable_node()){
   for(int i=0;i<model_with_prefix->mutable_graph()->node_size();i++){
     auto it_g_node=model_with_prefix->mutable_graph()->mutable_node(i);
     if(f_name_map.find(it_g_node->op_type())!=f_name_map.end())
@@ -332,9 +321,4 @@ ModelProto model_merge(
   return model;
 }
 
-
-
-
-
-}//end namespace
 }//end namespace
