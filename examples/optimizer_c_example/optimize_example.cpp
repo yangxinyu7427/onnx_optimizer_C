@@ -16,4 +16,5 @@ int main(int argc, char* argv[]) {
   auto model_opted = onnx::optimization::OptimizeFixed(
       model_merged, onnx::optimization::GetFuseAndEliminationPass());
   onnx::checker::check_model(model_opted);
+  onnx::optimization::saveModel(&model_opted,"/home/xyyang/PycharmProjects/pythonProject/model_opted.onnx");
 }

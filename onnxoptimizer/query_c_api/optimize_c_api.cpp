@@ -19,10 +19,10 @@ ModelProto OptimizeWithModels(
     ModelProto& mp_in2,
     std::string& mp_name1,
     std::string& mp_name2) {
-  ModelProto* model;
-  model_merge(&mp_in1,&mp_in2,mp_name1,mp_name2,model);
+
+  ModelProto model=model_merge(&mp_in1,&mp_in2,mp_name1,mp_name2);
   auto new_model = onnx::optimization::OptimizeFixed(
-      *model, onnx::optimization::GetFuseAndEliminationPass());
+      model, onnx::optimization::GetFuseAndEliminationPass());
   onnx::checker::check_model(new_model);
   return new_model;
 }
