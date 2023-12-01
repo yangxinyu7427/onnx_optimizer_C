@@ -48,10 +48,10 @@ target_include_directories(onnx_optimizer PUBLIC
     $<INSTALL_INTERFACE:include>
     )
 
-onnxopt_add_executable(onnx_optimizer_exec examples/onnx_optimizer_exec.cpp)
-target_link_libraries(onnx_optimizer_exec onnx_optimizer)
-onnxopt_add_executable(optimizer_example examples/optimizer_c_example/optimize_example.cpp)
-target_link_libraries(optimizer_example onnx_optimizer)
+#onnxopt_add_executable(onnx_optimizer_exec examples/onnx_optimizer_exec.cpp)
+#target_link_libraries(onnx_optimizer_exec onnx_optimizer)
+#onnxopt_add_executable(optimizer_example examples/optimizer_c_example/optimize_example.cpp)
+#target_link_libraries(optimizer_example onnx_optimizer)
 
 
 file(GLOB onnx_opt_c_api_srcs "onnxoptimizer/c_api/*.cc"
@@ -65,96 +65,110 @@ target_include_directories(onnx_optimizer_c_api PUBLIC
     $<INSTALL_INTERFACE:include>
     )
 
-if(BUILD_ONNX_PYTHON)
-  if("${PY_EXT_SUFFIX}" STREQUAL "")
-    if(MSVC)
-      set(PY_EXT_SUFFIX ".pyd")
-    else()
-      set(PY_EXT_SUFFIX ".so")
-    endif()
-  endif()
-  find_package(Python COMPONENTS Interpreter REQUIRED)
+# 设置源文件和头文件
+set(SOURCES onnxoptimizer/optimize_c_api/optimize_c_api.cpp)
+set(HEADERS onnxoptimizer/optimize_c_api/optimize_c_api.h)
 
-  onnxopt_add_library(onnx_opt_cpp2py_export MODULE "onnxoptimizer/cpp2py_export.cc")
-  set_target_properties(onnx_opt_cpp2py_export PROPERTIES PREFIX "")
-  set_target_properties(onnx_opt_cpp2py_export
-                        PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
-  set_target_properties(onnx_opt_cpp2py_export PROPERTIES SUFFIX ${PY_EXT_SUFFIX})
-  set_target_properties(onnx_opt_cpp2py_export
-                        PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-  target_include_directories(onnx_opt_cpp2py_export PRIVATE
-                             $<BUILD_INTERFACE:${ONNX_ROOT}>
-                             $<INSTALL_INTERFACE:include>
-                             ${Python_INCLUDE_DIR})
-  # pybind11 is a header only lib
-  find_package(pybind11 2.2)
-  if(pybind11_FOUND)
-    target_include_directories(onnx_opt_cpp2py_export PUBLIC
-      ${pybind11_INCLUDE_DIRS})
-  else()
-    if(EXISTS ${ONNX_ROOT}/third_party/pybind11/include/pybind11/pybind11.h)
-      target_include_directories(onnx_opt_cpp2py_export PUBLIC
-        ${ONNX_ROOT}/third_party/pybind11/include)
-    else()
-      message(FATAL_ERROR "cannot find pybind")
-    endif()
-  endif()
+# 创建静态链接库
+add_library(optimize_c_api STATIC ${SOURCES} ${HEADERS})
+target_link_libraries(optimize_c_api PRIVATE onnx_optimizer)
+target_include_directories(optimize_c_api PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+)
+onnxopt_add_executable(optimizer_example examples/optimizer_c_example/optimize_example.cpp)
+target_link_libraries(optimizer_example optimize_c_api)
 
-  if(APPLE)
-    set_target_properties(onnx_opt_cpp2py_export
-                          PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
-    target_link_libraries(onnx_opt_cpp2py_export
-                          PRIVATE -Wl,-force_load,$<TARGET_FILE:onnx_optimizer>)
-  elseif(MSVC)
-    # In MSVC, we will add whole archive in default
-    target_link_libraries(onnx_opt_cpp2py_export
-                          PRIVATE -WHOLEARCHIVE:$<TARGET_FILE:onnx_optimizer>)
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    # whole-archive linker option not available on AIX
-    target_sources(onnx_opt_cpp2py_export
-                          PRIVATE $<TARGET_OBJECTS:onnx_optimizer>)
-  else()
-    # Assume everything else is like gcc
-    target_link_libraries(onnx_opt_cpp2py_export
-                          PRIVATE "-Wl,--whole-archive" $<TARGET_FILE:onnx_optimizer>
-                                  "-Wl,--no-whole-archive")
-    set_target_properties(onnx_opt_cpp2py_export
-                          PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
-  endif()
-
-  target_link_libraries(onnx_opt_cpp2py_export PRIVATE onnx_optimizer)
-
-  if(MSVC)
-    find_package(Python COMPONENTS Interpreter Development REQUIRED)
-    target_link_libraries(onnx_opt_cpp2py_export PRIVATE ${Python_LIBRARIES})
-    target_compile_options(onnx_opt_cpp2py_export
-                           PRIVATE /MP
-                                   /WX
-                                   /wd4800 # disable warning type' : forcing
-                                           # value to bool 'true' or 'false'
-                                           # (performance warning)
-                                   /wd4503 # identifier' : decorated name length
-                                           # exceeded, name was truncated
-                                   /wd4146 # unary minus operator applied to
-                                           # unsigned type, result still
-                                           # unsigned from include\google\protob
-                                           # uf\wire_format_lite.h
-                                 /wd4244 # 'argument': conversion from 'google::
-                                         # protobuf::uint64' to 'int', possible
-                                         # loss of data
-                                 /wd4267 # Conversion from 'size_t' to 'int',
-                                         # possible loss of data
-                                 /wd4996 # The second parameter is ignored.
-                                   ${EXTRA_FLAGS})
-    if(ONNX_USE_PROTOBUF_SHARED_LIBS)
-      target_compile_options(onnx_opt_cpp2py_export
-                             PRIVATE /wd4251 # 'identifier' : class 'type1' needs to
-                                             # have dll-interface to be used by
-                                             # clients of class 'type2'
-                            )
-    endif()
-  endif()
-endif()
+#if(BUILD_ONNX_PYTHON)
+#  if("${PY_EXT_SUFFIX}" STREQUAL "")
+#    if(MSVC)
+#      set(PY_EXT_SUFFIX ".pyd")
+#    else()
+#      set(PY_EXT_SUFFIX ".so")
+#    endif()
+#  endif()
+#  find_package(Python COMPONENTS Interpreter REQUIRED)
+#
+#  onnxopt_add_library(onnx_opt_cpp2py_export MODULE "onnxoptimizer/cpp2py_export.cc")
+#  set_target_properties(onnx_opt_cpp2py_export PROPERTIES PREFIX "")
+#  set_target_properties(onnx_opt_cpp2py_export
+#                        PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
+#  set_target_properties(onnx_opt_cpp2py_export PROPERTIES SUFFIX ${PY_EXT_SUFFIX})
+#  set_target_properties(onnx_opt_cpp2py_export
+#                        PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+#  target_include_directories(onnx_opt_cpp2py_export PRIVATE
+#                             $<BUILD_INTERFACE:${ONNX_ROOT}>
+#                             $<INSTALL_INTERFACE:include>
+#                             ${Python_INCLUDE_DIR})
+#  # pybind11 is a header only lib
+#  find_package(pybind11 2.2)
+#  if(pybind11_FOUND)
+#    target_include_directories(onnx_opt_cpp2py_export PUBLIC
+#      ${pybind11_INCLUDE_DIRS})
+#  else()
+#    if(EXISTS ${ONNX_ROOT}/third_party/pybind11/include/pybind11/pybind11.h)
+#      target_include_directories(onnx_opt_cpp2py_export PUBLIC
+#        ${ONNX_ROOT}/third_party/pybind11/include)
+#    else()
+#      message(FATAL_ERROR "cannot find pybind")
+#    endif()
+#  endif()
+#
+#  if(APPLE)
+#    set_target_properties(onnx_opt_cpp2py_export
+#                          PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+#    target_link_libraries(onnx_opt_cpp2py_export
+#                          PRIVATE -Wl,-force_load,$<TARGET_FILE:onnx_optimizer>)
+#  elseif(MSVC)
+#    # In MSVC, we will add whole archive in default
+#    target_link_libraries(onnx_opt_cpp2py_export
+#                          PRIVATE -WHOLEARCHIVE:$<TARGET_FILE:onnx_optimizer>)
+#  elseif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+#    # whole-archive linker option not available on AIX
+#    target_sources(onnx_opt_cpp2py_export
+#                          PRIVATE $<TARGET_OBJECTS:onnx_optimizer>)
+#  else()
+#    # Assume everything else is like gcc
+#    target_link_libraries(onnx_opt_cpp2py_export
+#                          PRIVATE "-Wl,--whole-archive" $<TARGET_FILE:onnx_optimizer>
+#                                  "-Wl,--no-whole-archive")
+#    set_target_properties(onnx_opt_cpp2py_export
+#                          PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
+#  endif()
+#
+#  target_link_libraries(onnx_opt_cpp2py_export PRIVATE onnx_optimizer)
+#
+#  if(MSVC)
+#    find_package(Python COMPONENTS Interpreter Development REQUIRED)
+#    target_link_libraries(onnx_opt_cpp2py_export PRIVATE ${Python_LIBRARIES})
+#    target_compile_options(onnx_opt_cpp2py_export
+#                           PRIVATE /MP
+#                                   /WX
+#                                   /wd4800 # disable warning type' : forcing
+#                                           # value to bool 'true' or 'false'
+#                                           # (performance warning)
+#                                   /wd4503 # identifier' : decorated name length
+#                                           # exceeded, name was truncated
+#                                   /wd4146 # unary minus operator applied to
+#                                           # unsigned type, result still
+#                                           # unsigned from include\google\protob
+#                                           # uf\wire_format_lite.h
+#                                 /wd4244 # 'argument': conversion from 'google::
+#                                         # protobuf::uint64' to 'int', possible
+#                                         # loss of data
+#                                 /wd4267 # Conversion from 'size_t' to 'int',
+#                                         # possible loss of data
+#                                 /wd4996 # The second parameter is ignored.
+#                                   ${EXTRA_FLAGS})
+#    if(ONNX_USE_PROTOBUF_SHARED_LIBS)
+#      target_compile_options(onnx_opt_cpp2py_export
+#                             PRIVATE /wd4251 # 'identifier' : class 'type1' needs to
+#                                             # have dll-interface to be used by
+#                                             # clients of class 'type2'
+#                            )
+#    endif()
+#  endif()
+#endif()
 
 include(GNUInstallDirs)
 
@@ -178,6 +192,6 @@ install(FILES
   COMPONENT dev)
 install(EXPORT ONNXOptimizerTargets DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ONNXOptimizer")
 install(TARGETS
-  onnx_optimizer onnx_optimizer_c_api
+  onnx_optimizer onnx_optimizer_c_api optimize_c_api
   EXPORT ONNXOptimizerTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
 

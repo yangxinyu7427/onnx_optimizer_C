@@ -3,7 +3,8 @@
 //
 #include <onnx/checker.h>
 #include <onnx/onnx_pb.h>
-
+#include <onnxoptimizer/optimize.h>
+#include <onnxoptimizer/model_util.h>
 
 namespace onnx::optimization {
 
@@ -319,6 +320,25 @@ ModelProto model_merge(
   model.mutable_functions()->MergeFrom(*m2_with_prefix.mutable_functions());
   checker::check_model(model, false);
   return model;
+}
+
+void OptimizeWithModels(
+    std::string& mp_in_path1,
+    std::string& mp_in_path2,
+    std::string& mp_name1,
+    std::string& mp_name2,
+    std::string& mp_out_path) {
+  ONNX_NAMESPACE::ModelProto model1,model2;
+  onnx::optimization::loadModel(&model1, mp_in_path1, true);
+  onnx::checker::check_model(model1);
+  onnx::optimization::loadModel(&model2, mp_in_path2, true);
+  onnx::checker::check_model(model2);
+  ModelProto model=model_merge(&model1,&model2,mp_name1,mp_name2);
+  auto new_model = OptimizeFixed(
+      model, GetFuseAndEliminationPass());
+  onnx::checker::check_model(new_model);
+  onnx::optimization::saveModel(&new_model,mp_out_path);
+  onnx::optimization::saveModel(&model,"../examples/onnx_output_model/model_merged.onnx");
 }
 
 }//end namespace
