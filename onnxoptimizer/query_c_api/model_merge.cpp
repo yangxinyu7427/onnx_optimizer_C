@@ -338,7 +338,7 @@ void OptimizeWithModels(
       model, GetFuseAndEliminationPass());
   onnx::checker::check_model(new_model);
   onnx::optimization::saveModel(&new_model,mp_out_path);
-  onnx::optimization::saveModel(&model,"../examples/onnx_output_model/model_merged.onnx");
+  // onnx::optimization::saveModel(&model,"../examples/onnx_output_model/model_merged.onnx");
 }
 
 }//end namespace
