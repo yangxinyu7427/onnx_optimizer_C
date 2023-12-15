@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstddef>  // size_t
+#include <bitset>
 #include <filesystem>
 #include <fstream>
 #include <limits>
@@ -273,6 +274,23 @@ void writeExternalDataTensors(ModelProto* m,
 }
 
 }  // namespace
+
+void loadValueInfo(ValueInfoProto* v, const std::string& value_info_path) {
+  LoadProtoFromPath<ValueInfoProto>(value_info_path, *v);
+}
+
+void saveValueInfo(ValueInfoProto* v, const std::string& value_info_path) {
+  std::string serialize;
+  v->SerializeToString(&serialize);
+  std::ofstream data_file(value_info_path, std::ios_base::out |
+                                          std::ios_base::trunc |
+                                          std::ios_base::binary);
+  if (!data_file) {
+    throw std::runtime_error("open " + value_info_path + " failed!");
+  }
+  data_file.write(serialize.c_str(), serialize.size());
+  data_file.close();
+}
 
 void loadModel(ModelProto* m, const std::string& model_path,
                bool load_external_data) {

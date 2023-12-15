@@ -54,16 +54,16 @@ target_include_directories(onnx_optimizer PUBLIC
 #target_link_libraries(optimizer_example onnx_optimizer)
 
 
-file(GLOB onnx_opt_c_api_srcs "onnxoptimizer/c_api/*.cc"
-  "onnxoptimizer/c_api/*.h"
-    )
+#file(GLOB onnx_opt_c_api_srcs "onnxoptimizer/c_api/*.cc"
+#  "onnxoptimizer/c_api/*.h"
+#    )
 
-onnxopt_add_library(onnx_optimizer_c_api ${onnx_opt_c_api_srcs})
-target_link_libraries(onnx_optimizer_c_api PRIVATE onnx_optimizer)
-target_include_directories(onnx_optimizer_c_api PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-    )
+#onnxopt_add_library(onnx_optimizer_c_api ${onnx_opt_c_api_srcs})
+#target_link_libraries(onnx_optimizer_c_api PRIVATE onnx_optimizer)
+#target_include_directories(onnx_optimizer_c_api PUBLIC
+#    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+#    $<INSTALL_INTERFACE:include>
+#    )
 
 # 设置源文件和头文件
 set(SOURCES onnxoptimizer/optimize_c_api/optimize_c_api.cpp)
@@ -79,6 +79,14 @@ target_include_directories(optimize_c_api PUBLIC
 onnxopt_add_executable(optimizer_example examples/optimizer_c_example/optimize_example.cpp)
 target_link_libraries(optimizer_example optimize_c_api)
 
+onnxopt_add_executable(predicate_example examples/optimizer_c_example/predicate_example.cpp)
+target_link_libraries(predicate_example optimize_c_api)
+
+onnxopt_add_executable(get_value_info examples/optimizer_c_example/get_value_info.cpp)
+target_link_libraries(get_value_info onnx_optimizer)
+
+configure_file(onnxoptimizer/value_info/int_value_info.onnx
+        ${CMAKE_BINARY_DIR}/int_value_info.onnx COPYONLY)
 #if(BUILD_ONNX_PYTHON)
 #  if("${PY_EXT_SUFFIX}" STREQUAL "")
 #    if(MSVC)
@@ -192,6 +200,6 @@ install(FILES
   COMPONENT dev)
 install(EXPORT ONNXOptimizerTargets DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ONNXOptimizer")
 install(TARGETS
-  onnx_optimizer onnx_optimizer_c_api optimize_c_api
+  onnx_optimizer optimize_c_api
   EXPORT ONNXOptimizerTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
 

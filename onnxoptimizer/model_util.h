@@ -19,5 +19,8 @@ void saveModel(ModelProto* m, const std::string& model_path,
                const bool save_external_data = false,
                const std::string& data_file_name = {});
 
+void loadValueInfo(ValueInfoProto* v, const std::string& value_info_path);
+
+void saveValueInfo(ValueInfoProto* v, const std::string& value_info_path);
 }  // namespace optimization
 }  // namespace ONNX_NAMESPACE
