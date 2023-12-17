@@ -85,8 +85,8 @@ target_link_libraries(predicate_example optimize_c_api)
 onnxopt_add_executable(get_value_info examples/optimizer_c_example/get_value_info.cpp)
 target_link_libraries(get_value_info onnx_optimizer)
 
-configure_file(onnxoptimizer/value_info/int_value_info.onnx
-        ${CMAKE_BINARY_DIR}/int_value_info.onnx COPYONLY)
+#configure_file(onnxoptimizer/value_info/int_value_info.onnx
+#        ${CMAKE_BINARY_DIR}/int_value_info.onnx COPYONLY)
 #if(BUILD_ONNX_PYTHON)
 #  if("${PY_EXT_SUFFIX}" STREQUAL "")
 #    if(MSVC)

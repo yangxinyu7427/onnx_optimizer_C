@@ -10,23 +10,6 @@
 
 namespace onnx::optimization {
 
-//void get_value_info_from_onnx_model(std::string& onnx_model_path, std::string& name){
-//  onnx::ModelProto onnx_model;
-//  onnx::optimization::loadModel(&onnx_model, onnx_model_path, true);
-//  onnx::checker::check_model(onnx_model);
-//  onnx::ValueInfoProto input;
-//
-//  for(int i=0;i<onnx_model.graph().input_size();i++){
-//    if(onnx_model.mutable_graph()->mutable_input(i)->name()==name){
-//      input.CopyFrom(onnx_model.mutable_graph()->input(i));
-//      saveValueInfo(&input,"new_value_info.onnx");
-//      onnx::ValueInfoProto input_from_pre;
-//      loadValueInfo(&input_from_pre,"new_value_info.onnx");
-//      std::cout<<input_from_pre.name();
-//    }
-//  }
-//
-//}
 
 std::map<std::string, int> value_type_map = {
     {"int", 7},
@@ -62,7 +45,6 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   std::regex pattern(match_str);
 
   // create dim
-  // input_dim1.set_dim_value(-1);
   input_dim2.set_dim_value(1);
 
   // add int input, just like [0,1]
@@ -72,7 +54,6 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   input.set_name(input_name);
 
   // create output ValueInfoProto
-  // output_dim.set_dim_value(-1);
   *output.mutable_type()->mutable_tensor_type()->mutable_shape()->add_dim()=output_dim;
   output.mutable_type()->mutable_tensor_type()->set_elem_type(predicate_result_type_map[predicate]);
   output.set_name(output_name);
@@ -101,15 +82,8 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   }
   *onnx_model.mutable_graph()->add_output()=output;
 
-  // print
-  for(int i=0;i<onnx_model.graph().output_size();i++){
-      std::cout<<"this is int output "<< onnx_model.graph().output(i).name()<<std::endl;
-      std::cout<<onnx_model.graph().output(i).type().tensor_type().elem_type()<<std::endl;
-  }
-
   onnx::checker::check_model(onnx_model);
-  std::string output_model_path="../examples/onnx_output_model/model_pushed.onnx";
-  saveModel(&onnx_model,output_model_path);
+  saveModel(&onnx_model,onnx_model_path);
 
 }
 
@@ -143,7 +117,6 @@ void merge_double_models_with_predicate(std::string& onnx_model_path,std::string
   }
 
   // create output ValueInfoProto
-  // output_dim.set_dim_value(-1);
   *output.mutable_type()->mutable_tensor_type()->mutable_shape()->add_dim()=output_dim;
   output.mutable_type()->mutable_tensor_type()->set_elem_type(predicate_result_type_map[predicate]);
   output.set_name(output_name);
@@ -169,15 +142,9 @@ void merge_double_models_with_predicate(std::string& onnx_model_path,std::string
       *onnx_model.mutable_graph()->add_output()=output_list.at(i);
   }
   *onnx_model.mutable_graph()->add_output()=output;
-  // print
-  for(int i=0;i<onnx_model.graph().output_size();i++){
-      std::cout<<"this is int output "<< onnx_model.graph().output(i).name()<<std::endl;
-      std::cout<<onnx_model.graph().output(i).type().tensor_type().elem_type()<<std::endl;
-  }
 
   onnx::checker::check_model(onnx_model);
-  std::string output_model_path="../examples/onnx_output_model/model_pushed.onnx";
-  saveModel(&onnx_model,output_model_path);
+  saveModel(&onnx_model,onnx_model_path);
 }
 
 }
