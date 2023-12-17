@@ -2,23 +2,20 @@
 // Created by xyyang on 23-12-15.
 //
 #include <string>
-
 #include "onnxoptimizer/optimize_c_api/optimize_c_api.h"
 
 int main(int argc, char* argv[]) {
-  //  ONNX_NAMESPACE::ModelProto model1,model2;
-  //  onnx::optimization::loadModel(&model1, "../examples/onnx_input_model/model_lr.onnx", true);
-  //  onnx::checker::check_model(model1);
-  //  onnx::optimization::loadModel(&model2, "../examples/onnx_input_model/model_linear.onnx", true);
-  //  onnx::checker::check_model(model2);
-  //  std::string prefix1="model_lr";
-  //  std::string prefix2="model_linear";
-  //  auto model_opted=onnx::optimization::OptimizeWithModels(model1,model2, prefix1,prefix2);
-  //  onnx::optimization::saveModel(&model_opted,"../examples/onnx_output_model/model_opted.onnx");
-  std::string path1="../examples/onnx_input_model/model_lr.onnx";
-  std::string predicate="and";
-  std::string type="int";
-  std::string name="int_input1";
 
-  push_predicate_down(path1,predicate,type,name);
+  std::string path="../examples/onnx_output_model/model_opted.onnx";
+  std::string predicate1="Equal";
+  std::string type="int";
+  std::string name1="model_lr";
+  std::string predicate2="Equal";
+  std::string name2="model_linear";
+  std::string output_model_path="../examples/onnx_output_model/model_pushed.onnx";
+  std::string predicate3="And";
+
+  merge_single_model_with_predicate(path,predicate2,type,name2);
+  merge_single_model_with_predicate(output_model_path,predicate1,type,name1);
+  merge_double_models_with_predicate(output_model_path,predicate3,name1,name2);
 }

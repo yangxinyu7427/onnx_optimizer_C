@@ -17,11 +17,16 @@ void optimize_with_model_path(
     onnx::optimization::OptimizeWithModels(mp_in_path1,mp_in_path2,mp_name1,mp_name2,mp_out_path);
 }
 
-void push_predicate_down(
+void merge_single_model_with_predicate(
     std::string& onnx_model_path,
     std::string& predicate,
     std::string& value_type,
     std::string prefix){
     onnx::optimization::merge_single_model_with_predicate(onnx_model_path,predicate,value_type,prefix);
+}
+
+void merge_double_models_with_predicate(std::string& onnx_model_path,std::string& predicate,
+                                        std::string prefix_l,std::string prefix_r){
+    onnx::optimization::merge_double_models_with_predicate(onnx_model_path,predicate,prefix_l,prefix_r);
 }
 
