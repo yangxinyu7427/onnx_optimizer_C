@@ -10,7 +10,7 @@ namespace onnx::optimization {
 
 std::string add_prefix(std::string prefix,std::string name){
   if(!name.empty())
-    return prefix.append("_"+name);
+    return prefix.append(name);
   else return name;
 }
 
