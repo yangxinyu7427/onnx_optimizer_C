@@ -39,10 +39,12 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   onnx::ValueInfoProto input,output;
   onnx::NodeProto node;
   std::string input_name=prefix+"_"+predicate+"_"+value_type;
-  std::string output_name=prefix+"_"+predicate;
+  std::string output_name=prefix+"_"+value_type+"_"+predicate;
   std::string node_name=output_name+"_node";
   std::string match_str="^"+prefix;
   std::regex pattern(match_str);
+  std::string match_str_end="probability$";
+  std::regex pattern_end(match_str_end);
 
   // create dim
   input_dim2.set_dim_value(1);
@@ -60,8 +62,13 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
 
   // create predicate node
   node.set_op_type(predicate);
-  // todo how to get output label
-  std::string label=prefix+"_output_label";
+  std::string label;
+  for(int i=0;i<onnx_model.graph().output_size();i++){
+    if(std::regex_search(onnx_model.graph().output(i).name(), pattern)&&
+        !std::regex_search(onnx_model.graph().output(i).name(), pattern_end)){
+      label=onnx_model.graph().output(i).name();;
+    }
+  }
   node.add_input(label);
   node.add_input(input_name);
   node.add_output(output_name);
@@ -99,19 +106,24 @@ void merge_double_models_with_predicate(std::string& onnx_model_path,std::string
   onnx::NodeProto node;
   std::string match_str_l="^"+prefix_l;
   std::string match_str_r="^"+prefix_r;
+  std::string match_str_end="probability$";
   std::string output_name=prefix_l+"_"+prefix_r+"_"+predicate;
   std::string node_name=output_name+"_node";
   std::regex pattern_l(match_str_l);
   std::regex pattern_r(match_str_r);
+  std::regex pattern_end(match_str_end);
 
   // search output ValueInfoProto
   onnx::ValueInfoProto output_l;
   onnx::ValueInfoProto output_r;
 
   for(int i=0;i<onnx_model.graph().output_size();i++){
-      if(std::regex_search(onnx_model.graph().output(i).name(), pattern_l)){
+      if(std::regex_search(onnx_model.graph().output(i).name(), pattern_l)&&
+        !std::regex_search(onnx_model.graph().output(i).name(), pattern_end)){
         output_l=onnx_model.graph().output(i);
-      } else if(std::regex_search(onnx_model.graph().output(i).name(), pattern_r)){
+      }
+      else if(std::regex_search(onnx_model.graph().output(i).name(), pattern_r)&&
+               !std::regex_search(onnx_model.graph().output(i).name(), pattern_end)){
         output_r=onnx_model.graph().output(i);
       }
   }
