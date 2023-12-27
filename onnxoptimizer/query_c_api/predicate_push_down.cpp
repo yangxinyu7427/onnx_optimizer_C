@@ -29,7 +29,7 @@ std::map<std::string, int> predicate_result_type_map={
 };
 
 void merge_single_model_with_predicate(std::string& onnx_model_path, std::string& predicate,
-                                       std::string& value_type, std::string prefix){
+                                       std::string& value_type, std::string prefix, int count){
   // load model
   onnx::ModelProto onnx_model;
   onnx::optimization::loadModel(&onnx_model, onnx_model_path, true);
@@ -38,8 +38,8 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   onnx::TensorShapeProto_Dimension input_dim1,input_dim2,output_dim;
   onnx::ValueInfoProto input,output;
   onnx::NodeProto node;
-  std::string input_name=prefix+"_"+predicate+"_"+value_type;
-  std::string output_name=prefix+"_"+value_type+"_"+predicate;
+  std::string input_name=prefix+"_"+to_string(count)+"_input";
+  std::string output_name=prefix+"_"+to_string(count)+"_output";
   std::string node_name=output_name+"_node";
   std::string match_str="^"+prefix;
   std::regex pattern(match_str);

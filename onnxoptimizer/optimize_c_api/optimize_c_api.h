@@ -12,7 +12,7 @@ void optimize_with_model_path(std::string& mp_in_path1,
                               std::string& mp_out_path);
 
 void merge_single_model_with_predicate(std::string& onnx_model_path, std::string& predicate,
-                         std::string& value_type, std::string prefix);
+                         std::string& value_type, std::string prefix,int count);
 
 void merge_double_models_with_predicate(std::string& onnx_model_path,std::string& predicate,
                                         std::string prefix_l,std::string prefix_r);

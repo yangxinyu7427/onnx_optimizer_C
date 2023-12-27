@@ -21,8 +21,9 @@ void merge_single_model_with_predicate(
     std::string& onnx_model_path,
     std::string& predicate,
     std::string& value_type,
-    std::string prefix){
-    onnx::optimization::merge_single_model_with_predicate(onnx_model_path,predicate,value_type,prefix);
+    std::string prefix,
+    int count){
+    onnx::optimization::merge_single_model_with_predicate(onnx_model_path,predicate,value_type,prefix,count);
 }
 
 void merge_double_models_with_predicate(std::string& onnx_model_path,std::string& predicate,
