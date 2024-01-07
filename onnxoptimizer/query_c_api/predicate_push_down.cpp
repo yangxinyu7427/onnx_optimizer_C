@@ -36,8 +36,8 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   onnx::checker::check_model(onnx_model);
 
   onnx::TensorShapeProto_Dimension input_dim1,input_dim2,output_dim;
-  onnx::ValueInfoProto input,output;
-  onnx::NodeProto node;
+  onnx::ValueInfoProto input,output,reshape_input;
+  onnx::NodeProto node, reshape_node;
   std::string input_name=prefix+"_"+to_string(count)+"_input";
   std::string output_name=prefix+"_"+to_string(count)+"_output";
   std::string node_name=output_name+"_node";
@@ -60,6 +60,23 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   output.mutable_type()->mutable_tensor_type()->set_elem_type(predicate_result_type_map[predicate]);
   output.set_name(output_name);
 
+  // create reshape node
+  onnx::TensorProto tensor;
+  std::string tensor_name=input_name+"_reshape_tensor";
+  tensor.set_name(tensor_name);
+  tensor.set_data_type(value_type_map[value_type]);
+  tensor.add_dims(1);
+  tensor.add_int64_data(-1);
+
+  std::string reshape_name=input_name+"_reshape";
+  std::string reshape_output_name=input_name+"_reshape_output";
+  reshape_node.set_op_type("Reshape");
+  reshape_node.set_name(reshape_name);
+  reshape_node.add_input(input_name);
+  reshape_node.add_input(tensor_name);
+  reshape_node.add_output(reshape_output_name);
+
+
   // create predicate node
   node.set_op_type(predicate);
   std::string label;
@@ -70,11 +87,13 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
     }
   }
   node.add_input(label);
-  node.add_input(input_name);
+  node.add_input(reshape_output_name);
   node.add_output(output_name);
   node.set_name(node_name);
 
   // change onnx_model
+  *onnx_model.mutable_graph()->add_initializer()=tensor;
+  *onnx_model.mutable_graph()->add_node()=reshape_node;
   *onnx_model.mutable_graph()->add_input()=input;
   *onnx_model.mutable_graph()->add_node()=node;
   std::vector<onnx::ValueInfoProto> output_list;
