@@ -45,6 +45,7 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   std::regex pattern(match_str);
   std::string match_str_end="probability$";
   std::regex pattern_end(match_str_end);
+  std::regex pattern_ends("probabilities$");
 
   // create dim
   input_dim2.set_dim_value(1);
@@ -82,7 +83,8 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   std::string label;
   for(int i=0;i<onnx_model.graph().output_size();i++){
     if(std::regex_search(onnx_model.graph().output(i).name(), pattern)&&
-        !std::regex_search(onnx_model.graph().output(i).name(), pattern_end)){
+        !std::regex_search(onnx_model.graph().output(i).name(), pattern_end)
+        &&!std::regex_search(onnx_model.graph().output(i).name(), pattern_ends)){
       label=onnx_model.graph().output(i).name();;
     }
   }
@@ -131,6 +133,7 @@ void merge_double_models_with_predicate(std::string& onnx_model_path,std::string
   std::regex pattern_l(match_str_l);
   std::regex pattern_r(match_str_r);
   std::regex pattern_end(match_str_end);
+  std::regex pattern_ends("probabilities$");
 
   // search output ValueInfoProto
   onnx::ValueInfoProto output_l;
@@ -138,11 +141,13 @@ void merge_double_models_with_predicate(std::string& onnx_model_path,std::string
 
   for(int i=0;i<onnx_model.graph().output_size();i++){
       if(std::regex_search(onnx_model.graph().output(i).name(), pattern_l)&&
-        !std::regex_search(onnx_model.graph().output(i).name(), pattern_end)){
+        !std::regex_search(onnx_model.graph().output(i).name(), pattern_end)&&
+        !std::regex_search(onnx_model.graph().output(i).name(), pattern_ends)){
         output_l=onnx_model.graph().output(i);
       }
       else if(std::regex_search(onnx_model.graph().output(i).name(), pattern_r)&&
-               !std::regex_search(onnx_model.graph().output(i).name(), pattern_end)){
+               !std::regex_search(onnx_model.graph().output(i).name(), pattern_end)&&
+        !std::regex_search(onnx_model.graph().output(i).name(), pattern_ends)){
         output_r=onnx_model.graph().output(i);
       }
   }
