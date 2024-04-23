@@ -26,6 +26,8 @@ std::map<std::string, int> predicate_result_type_map={
     {"Equal",9},
     {"And",9},
     {"Or",9},
+    {"Add",7},
+    {"Mul",7},
 };
 
 void merge_single_model_with_predicate(std::string& onnx_model_path, std::string& predicate,
