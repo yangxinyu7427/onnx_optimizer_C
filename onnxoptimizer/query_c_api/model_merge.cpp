@@ -322,6 +322,13 @@ ModelProto model_merge(
   return model;
 }
 
+ModelProto opt_model(
+  ModelProto* m
+){
+  auto new_model = OptimizeFixed(*m, GetFuseAndEliminationPass());
+  return new_model;
+}
+
 void OptimizeWithModels(
     std::string& mp_in_path1,
     std::string& mp_in_path2,
@@ -341,4 +348,28 @@ void OptimizeWithModels(
   // onnx::optimization::saveModel(&model,"../examples/onnx_output_model/model_merged.onnx");
 }
 
+void MergeWithModels(
+    std::string& mp_in_path1,
+    std::string& mp_in_path2,
+    std::string& mp_name1,
+    std::string& mp_name2,
+    std::string& mp_out_path) {
+  ONNX_NAMESPACE::ModelProto model1,model2;
+  onnx::optimization::loadModel(&model1, mp_in_path1, true);
+  onnx::optimization::loadModel(&model2, mp_in_path2, true);
+  ModelProto model=model_merge(&model1,&model2,mp_name1,mp_name2);
+  onnx::checker::check_model(model);
+  onnx::optimization::saveModel(&model,mp_out_path);
+  // onnx::optimization::saveModel(&model,"../examples/onnx_output_model/model_merged.onnx");
+}
+
+void OptimizeOnMergedModel(
+    std::string& mp_in_path,
+    std::string& mp_out_path) {
+    ONNX_NAMESPACE::ModelProto model;
+    onnx::optimization::loadModel(&model, mp_in_path, true);
+    ModelProto model_opted=opt_model(&model);
+    onnx::checker::check_model(model_opted);
+    onnx::optimization::saveModel(&model_opted,mp_out_path);
+    }
 }//end namespace

@@ -31,3 +31,12 @@ void merge_double_models_with_predicate(std::string& onnx_model_path,std::string
     onnx::optimization::merge_double_models_with_predicate(onnx_model_path,predicate,prefix_l,prefix_r);
 }
 
+void merge_with_model_path(std::string& mp_in_path1,std::string& mp_in_path2,std::string& mp_name1,std::string& mp_name2,
+    std::string& mp_out_path){
+    onnx::optimization::MergeWithModels(mp_in_path1,mp_in_path2,mp_name1,mp_name2,mp_out_path);
+}
+
+void optimize_on_merged_model(std::string& mp_in_path,std::string& mp_out_path){
+    onnx::optimization::OptimizeOnMergedModel(mp_in_path, mp_out_path);
+}
+
