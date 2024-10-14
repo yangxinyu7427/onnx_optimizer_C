@@ -14,12 +14,16 @@ int main(int argc, char* argv[]) {
   std::string path7="../examples/onnx_input_model/model_nb.onnx";
   std::string path8="../examples/onnx_input_model/flights_lr.onnx";
   std::string path9="../examples/onnx_input_model/flights_nb.onnx";
-  std::string path10="../examples/onnx_input_model/fakenews_lr.onnx";
-  std::string path11="../examples/onnx_input_model/fakenews_nb.onnx";
+  std::string path10="../examples/onnx_input_model/fakenews_lr_test.onnx";
+  std::string path11="../examples/onnx_input_model/fakenews_nb";
+  std::string path12="../examples/onnx_input_model/model_opted.onnx";
   std::string outpath="../examples/onnx_input_model/model_out.onnx";
   std::string inpath="../examples/onnx_input_model/model_in.onnx";
-
-  std::vector<std::string> tmp = check_redundant(path10,path11);
-  change_models(path10,outpath,inpath,tmp);
+  std::string path13="../examples/onnx_input_model/model_reg.onnx";
+  std::string pre="sgd_1_";
+  std::string path_pre="../examples/onnx_input_model/model_reg_prefix.onnx";
+  add_prefix_on_model(path13, path_pre, pre);
+  std::vector<std::string> tmp = check_redundant(path_pre,path12);
+  change_models(path_pre,outpath,inpath,tmp);
 
 }

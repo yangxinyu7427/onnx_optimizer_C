@@ -5,7 +5,7 @@
 #include <fstream>
 
 #include "optimize_c_api.h"
-#include "onnxoptimizer/query_c_api/model_merge.cpp"
+//#include "onnxoptimizer/query_c_api/model_merge.cpp"
 #include "onnxoptimizer/query_c_api/predicate_push_down.cpp"
 #include "onnxoptimizer/query_c_api/redundant_calculation_detection.cpp"
 
@@ -48,4 +48,7 @@ void change_models(std::string& changed_model_path,std::string& output_model_pat
                    std::string& changed_input_model_path,
                    const std::vector<std::string>& output_name){
     onnx::optimization::change_models(changed_model_path, output_model_path, changed_input_model_path, output_name);
+}
+void add_prefix_on_model(std::string& changed_model_path, std::string& output_model_path, std::string& prefix){
+    onnx::optimization::add_prefix_on_model(changed_model_path, output_model_path, prefix);
 }

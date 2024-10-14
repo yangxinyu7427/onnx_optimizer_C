@@ -4,6 +4,7 @@
 #include <onnx/checker.h>
 #include <onnx/onnx_pb.h>
 #include <onnxoptimizer/optimize.h>
+#include <onnxoptimizer/query_c_api/model_merge.cpp>
 #include <onnxoptimizer/model_util.h>
 #include <vector>
 #include "onnx/common/ir.h"
@@ -13,6 +14,13 @@
 #include "onnxoptimizer/pass_manager.h"
 #include "onnxoptimizer/pass_registry.h"
 namespace onnx::optimization {
+  void add_prefix_on_model(std::string& changed_model_path, std::string& output_model_path, std::string& prefix){
+    ModelProto model_changed, model_output;
+    onnx::optimization::loadModel(&model_changed, changed_model_path, true);
+    add_model_prefix(&model_changed,prefix,&model_output);
+    saveModel(&model_output,output_model_path);
+  }
+
   void mark_reachable_nodes(std::shared_ptr<Graph> graph, const std::string& input_name, std::unordered_set<std::string>& reachable_nodes) {
     for(auto node:graph->nodes()){
       if(reachable_nodes.find(node->name())!=reachable_nodes.end())
@@ -32,7 +40,6 @@ namespace onnx::optimization {
     ModelProto model_changed, model_compared;
     onnx::optimization::loadModel(&model_changed, changed_model_path, true);
     onnx::optimization::loadModel(&model_compared, compared_model_path, true);
-
     std::shared_ptr<Graph> g_changed(ImportModelProto(model_changed));
     std::shared_ptr<Graph> g_compared(ImportModelProto(model_compared));
     auto node_list_changed = g_changed->nodes();
@@ -60,6 +67,7 @@ namespace onnx::optimization {
       }
     }
     std::vector<Node *> same_node_input_list(same_node_list);
+    //将那些输出均有下一个相同结点将其作为输入的结点删掉
     for(int i = 0;i<same_node_list.size(); i++){
       auto node=same_node_list[i];
       auto outputs = node->outputs();
@@ -116,13 +124,13 @@ namespace onnx::optimization {
     }
 
     std::vector<std::string> value_name_list;
-    for(int i=0;i<final_node_list.size();i++){
-      for(auto node: final_node_list){
-        for(auto value:node->outputs()){
-          value_name_list.push_back(value->uniqueName());
-        }
+    //for(int i=0;i<final_node_list.size();i++){
+    for(auto node: final_node_list){
+      for(auto value:node->outputs()){
+        value_name_list.push_back(value->uniqueName());
       }
     }
+    //}
     return value_name_list;
   }
 

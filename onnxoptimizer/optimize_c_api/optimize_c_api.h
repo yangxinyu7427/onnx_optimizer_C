@@ -32,5 +32,6 @@ std::vector<std::string> check_redundant(std::string& changed_model_path,
 void change_models(std::string& changed_model_path,std::string& output_model_path,
                 std::string& changed_input_model_path,
                 const std::vector<std::string>& output_name);
+void add_prefix_on_model(std::string& changed_model_path, std::string& output_model_path, std::string& prefix);
 #endif  // ONNX_OPTIMIZER_OPTIMIZE_C_API_H
 
