@@ -20,9 +20,9 @@ int main(int argc, char* argv[]) {
   //  std::string path1="../examples/onnx_input_model/model_lr.onnx";
   //  std::string path2="../examples/onnx_input_model/model_linear.onnx";
 
-  std::string path1="../examples/onnx_input_model/model_nb.onnx";
-  std::string path2="../examples/onnx_input_model/model_lr.onnx";
-  std::string path3="../examples/onnx_input_model/model_sgd.onnx";
+  std::string path1="../examples/onnx_input_model/neo_nb2.onnx";
+  std::string path2="../examples/onnx_input_model/neo_lr2.onnx";
+  std::string path3="../examples/onnx_input_model/neo_sgd2.onnx";
   //  std::string pre1="model_lr_1_";
   //  std::string pre2="model_linear_1_";
   std::string pre1="nb_1_";

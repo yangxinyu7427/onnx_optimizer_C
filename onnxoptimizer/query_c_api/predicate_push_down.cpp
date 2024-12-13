@@ -100,7 +100,7 @@ void merge_single_model_with_predicate(std::string& onnx_model_path, std::string
   *onnx_model.mutable_graph()->add_node()=reshape_node;
   *onnx_model.mutable_graph()->add_input()=input;
   *onnx_model.mutable_graph()->add_node()=node;
-  std::regex pattern_output_label("_output_label$");
+  std::regex pattern_output_label("_label$");
   std::vector<onnx::ValueInfoProto> output_list;
   std::vector<onnx::ValueInfoProto> save_output_list;
   for(int i=0;i<onnx_model.graph().output_size();i++){
@@ -175,10 +175,11 @@ void merge_double_models_with_predicate(std::string& onnx_model_path,std::string
 
   // change onnx_model
   *onnx_model.mutable_graph()->add_node()=node;
-  std::regex pattern_output_label("_output_label$");
+  std::regex pattern_output_label("_label$");
   std::vector<onnx::ValueInfoProto> output_list;
   std::vector<onnx::ValueInfoProto> save_output_list;
   for(int i=0;i<onnx_model.graph().output_size();i++){
+      std::string tmp=onnx_model.graph().output(i).name();
       if(!std::regex_search(onnx_model.graph().output(i).name(), pattern_l) &&
           !std::regex_search(onnx_model.graph().output(i).name(), pattern_r)){
         output_list.push_back(onnx_model.graph().output(i));
