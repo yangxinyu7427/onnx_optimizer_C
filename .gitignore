@@ -82,3 +82,7 @@ compile_commands.json
 .mypy_cache
 virtualenv
 venv
+
+examples/model4test
+build.sh
+run.sh

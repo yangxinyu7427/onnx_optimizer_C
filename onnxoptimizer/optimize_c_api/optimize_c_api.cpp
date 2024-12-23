@@ -6,6 +6,7 @@
 
 #include "optimize_c_api.h"
 //#include "onnxoptimizer/query_c_api/model_merge.cpp"
+#include "onnxoptimizer/query_c_api/decision_tree_predicate.cpp"
 #include "onnxoptimizer/query_c_api/predicate_push_down.cpp"
 #include "onnxoptimizer/query_c_api/redundant_calculation_detection.cpp"
 
@@ -52,3 +53,26 @@ void change_models(std::string& changed_model_path,std::string& output_model_pat
 void add_prefix_on_model(std::string& changed_model_path, std::string& output_model_path, std::string& prefix){
     onnx::optimization::add_prefix_on_model(changed_model_path, output_model_path, prefix);
 }
+
+/// @brief 
+/// @param input_model_path 
+/// @param comparison_operator 1: ==, 2: <, 3: <=, 4: >, 5: >= 
+/// @param threshold 
+/// @param features
+/// @return optimized-model path
+std::string optimize_on_decision_tree_predicate(std::string& input_model_path, uint8_t comparison_operator,
+                float threshold) {
+    std::string mp1 = onnx::optimization::DTConvertRule::match(input_model_path);
+	std::string mp2 = onnx::optimization::DTPruneRule::match(mp1, comparison_operator, threshold);
+	return onnx::optimization::DTMergeRule::match(mp2);
+
+	// std::string mp1 = onnx::optimization::DTPruneRule::match(input_model_path, comparison_operator, threshold);
+	// return onnx::optimization::DTMergeRule::match(mp1);
+	// return onnx::optimization::DTMergeRule::match(mp3);
+    // return onnx::optimization::DTConvertRule::match(input_model_path);
+    // return onnx::optimization::DTPruneRule::match(input_model_path, comparison_operator, threshold);
+
+    // return onnx::optimization::DTConvertRule::match(input_model_path);
+}
+
+// -----------------------

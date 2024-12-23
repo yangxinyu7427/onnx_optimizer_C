@@ -33,5 +33,9 @@ void change_models(std::string& changed_model_path,std::string& output_model_pat
                 std::string& changed_input_model_path,
                 const std::vector<std::string>& output_name);
 void add_prefix_on_model(std::string& changed_model_path, std::string& output_model_path, std::string& prefix);
+
+//--------------------------
+std::string optimize_on_decision_tree_predicate(std::string& input_model_path, uint8_t comparison_operator, float threshold);
+
 #endif  // ONNX_OPTIMIZER_OPTIMIZE_C_API_H
 
