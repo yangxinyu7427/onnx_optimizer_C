@@ -75,4 +75,16 @@ std::string optimize_on_decision_tree_predicate(std::string& input_model_path, u
     // return onnx::optimization::DTConvertRule::match(input_model_path);
 }
 
+std::string optimize_on_decision_tree_predicate_convert(std::string& input_model_path){
+    return onnx::optimization::DTConvertRule::match(input_model_path);
+}
+
+std::string optimize_on_decision_tree_predicate_prune(std::string& input_model_path, uint8_t comparison_operator, float threshold){
+    return onnx::optimization::DTPruneRule::match(input_model_path, comparison_operator, threshold);
+}
+
+std::string optimize_on_decision_tree_predicate_merge(std::string& input_model_path){
+    return onnx::optimization::DTMergeRule::match(input_model_path);
+}
+
 // -----------------------

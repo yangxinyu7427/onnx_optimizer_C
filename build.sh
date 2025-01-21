@@ -7,4 +7,4 @@ rm -rf build
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 # 构建项目，Debug 模式，先清理再并行编译
-cmake --build build --config Debug --clean-first --parallel 10
+cmake --build build --config Debug --clean-first --parallel 80

@@ -45,7 +45,7 @@ std::string saveModelWithNewName(ModelProto& mp_in,
 class DTConvertRule {
  public:
   static void processNode(Node* node, int mode) {
-    auto classlabels_int64s = node->fs(Symbol("classlabels_int64s"));
+    auto classlabels_int64s = node->is(Symbol("classlabels_int64s"));
     auto class_treeids = node->is(Symbol("class_treeids"));
     auto class_ids = node->is(Symbol("class_ids"));
     auto class_nodeids = node->is(Symbol("class_nodeids"));
@@ -109,8 +109,8 @@ class DTConvertRule {
                                        std::string& model_path, int mode) {
     auto g_m = mp_in.mutable_graph();
     auto input = g_m->input();
-    std::cout << input[0].mutable_type()->mutable_tensor_type()->elem_type()
-              << std::endl;
+    // std::cout << input[0].mutable_type()->mutable_tensor_type()->elem_type()
+    //           << std::endl;
 
     // 输出
     onnx::ValueInfoProto output;
@@ -131,7 +131,7 @@ class DTConvertRule {
         p_n_clf = node;
       }
     }
-    
+
     // node
     onnx::NodeProto p_n;
     p_n.set_op_type("TreeEnsembleRegressor");
@@ -156,7 +156,7 @@ class DTConvertRule {
       }
       // TreeEnsembleClassifier 之后的 Cast
       if (node.op_type() == "Cast") {
-        if (node.input()[0] == "label"){
+        if (node.input()[0] == "label") {
           g_m->mutable_node()->DeleteSubrange(i, 1);
         }
       }
@@ -228,54 +228,103 @@ class DTPruneRule {
   static int pruning(size_t node_id, size_t depth,
                      std::vector<std::string>& result_nodes, Node* treeNode,
                      uint8_t comparison_operator, float threshold) {
-    static const auto& left_nodes = treeNode->is(Symbol("nodes_truenodeids"));
-    static const auto& right_nodes = treeNode->is(Symbol("nodes_falsenodeids"));
-    static const auto& node_types = treeNode->ss(Symbol("nodes_modes"));
-    static const auto& target_nodeids = treeNode->is(Symbol("target_nodeids"));
-    static const auto& target_weights = treeNode->fs(Symbol("target_weights"));
+    const auto& left_nodes = treeNode->is(Symbol("nodes_truenodeids"));
+    const auto& right_nodes = treeNode->is(Symbol("nodes_falsenodeids"));
+    const auto& node_types = treeNode->ss(Symbol("nodes_modes"));
+    const auto& target_nodeids = treeNode->is(Symbol("target_nodeids"));
+    const auto& target_weights = treeNode->fs(Symbol("target_weights"));
 
-    result_nodes[node_id] = node_types[node_id];
-    auto is_leaf = node_types[node_id] == "LEAF";
+    result_nodes.at(node_id) = node_types.at(node_id);
+    auto is_leaf = node_types.at(node_id) == "LEAF";
     if (is_leaf) {
       auto target_id = -1;
       for (size_t ti = 0; ti < target_nodeids.size(); ++ti) {
-        size_t ni = target_nodeids[ti];
+        size_t ni = target_nodeids.at(ti);
         if (ni == node_id) {
           target_id = static_cast<int>(ti);
           break;
         }
       }
       int result = comparison_funcs[comparison_operator](
-          target_weights[target_id], threshold);
-      result == 1 ? result_nodes[node_id] = "LEAF_TRUE"
-                  : result_nodes[node_id] = "LEAF_FALSE";
+          target_weights.at(target_id), threshold);
+      result == 1 ? result_nodes.at(node_id) = "LEAF_TRUE"
+                  : result_nodes.at(node_id) = "LEAF_FALSE";
       return result;
     } else {
-      auto left_node_id = left_nodes[node_id];
+      auto left_node_id = left_nodes.at(node_id);
       auto left_result = pruning(left_node_id, depth + 1, result_nodes,
                                  treeNode, comparison_operator, threshold);
-      auto right_node_id = right_nodes[node_id];
+      auto right_node_id = right_nodes.at(node_id);
       auto right_result = pruning(right_node_id, depth + 1, result_nodes,
                                   treeNode, comparison_operator, threshold);
 
       if (left_result == 0 && right_result == 0) {
-        result_nodes[node_id] = "LEAF_FALSE";
-        result_nodes[left_node_id] = "REMOVED";
-        result_nodes[right_node_id] = "REMOVED";
+        result_nodes.at(node_id) = "LEAF_FALSE";
+        result_nodes.at(left_node_id) = "REMOVED";
+        result_nodes.at(right_node_id) = "REMOVED";
         return 0;
       }
 
       if (left_result == 1 && right_result == 1) {
-        result_nodes[node_id] = "LEAF_TRUE";
-        result_nodes[left_node_id] = "REMOVED";
-        result_nodes[right_node_id] = "REMOVED";
+        result_nodes.at(node_id) = "LEAF_TRUE";
+        result_nodes.at(left_node_id) = "REMOVED";
+        result_nodes.at(right_node_id) = "REMOVED";
         return 1;
       }
       return 2;
     }
+    // result_nodes[node_id] = node_types[node_id];
+    // auto is_leaf = node_types[node_id] == "LEAF";
+    // if (is_leaf) {
+    //   auto target_id = -1;
+    //   for (size_t ti = 0; ti < target_nodeids.size(); ++ti) {
+    //     size_t ni = target_nodeids[ti];
+    //     if (ni == node_id) {
+    //       target_id = static_cast<int>(ti);
+    //       break;
+    //     }
+    //   }
+    //   int result = comparison_funcs[comparison_operator](
+    //       target_weights[target_id], threshold);
+    //   result == 1 ? result_nodes[node_id] = "LEAF_TRUE"
+    //               : result_nodes[node_id] = "LEAF_FALSE";
+    //   return result;
+    // } else {
+    //   auto left_node_id = left_nodes[node_id];
+    //   auto left_result = pruning(left_node_id, depth + 1, result_nodes,
+    //                              treeNode, comparison_operator, threshold);
+    //   auto right_node_id = right_nodes[node_id];
+    //   auto right_result = pruning(right_node_id, depth + 1, result_nodes,
+    //                               treeNode, comparison_operator, threshold);
+
+    //   if (left_result == 0 && right_result == 0) {
+    //     result_nodes[node_id] = "LEAF_FALSE";
+    //     result_nodes[left_node_id] = "REMOVED";
+    //     result_nodes[right_node_id] = "REMOVED";
+    //     return 0;
+    //   }
+
+    //   if (left_result == 1 && right_result == 1) {
+    //     result_nodes[node_id] = "LEAF_TRUE";
+    //     result_nodes[left_node_id] = "REMOVED";
+    //     result_nodes[right_node_id] = "REMOVED";
+    //     return 1;
+    //   }
+    //   return 2;
+    // }
   }
 
-  static void processNode(Node* node, std::vector<std::string>& removed_nodes) {
+  static bool processNode(Node* node, std::vector<std::string>& removed_nodes) {
+    // 1. 计算 leaf_count
+    int leaf_false_count =
+        std::count(removed_nodes.begin(), removed_nodes.end(), "LEAF_FALSE");
+    int leaf_true_count =
+        std::count(removed_nodes.begin(), removed_nodes.end(), "LEAF_TRUE");
+    if (leaf_false_count == 0 || leaf_true_count == 0) {
+      return false;
+    }
+    int leaf_count = leaf_false_count + leaf_true_count;
+
     int64_t input_n_targets = node->i(Symbol("n_targets"));
     std::vector<int64_t> input_nodes_falsenodeids =
         node->is(Symbol("nodes_falsenodeids"));
@@ -301,11 +350,6 @@ class DTPruneRule {
         node->is(Symbol("target_treeids"));
     std::vector<double> input_target_weights =
         node->fs(Symbol("target_weights"));
-
-    // 1. 计算 leaf_count
-    int leaf_count =
-        std::count(removed_nodes.begin(), removed_nodes.end(), "LEAF_FALSE") +
-        std::count(removed_nodes.begin(), removed_nodes.end(), "LEAF_TRUE");
 
     // 2. 构建 new_ids
     std::vector<NodeID> new_ids;
@@ -447,6 +491,8 @@ class DTPruneRule {
     node->is_(Symbol("target_nodeids"), std::move(target_nodeids));
     node->is_(Symbol("target_treeids"), std::move(target_treeids));
     node->fs_(Symbol("target_weights"), std::move(target_weights));
+
+    return true;
   }
 
   static std::string apply(ModelProto& mp_in, std::shared_ptr<Graph>& graph,
@@ -455,9 +501,12 @@ class DTPruneRule {
     size_t length = treeNode->ss(Symbol("nodes_modes")).size();
     std::vector<std::string> removed_nodes{length, ""};
     pruning(0, 0, removed_nodes, treeNode, comparison_operator, threshold);
-    processNode(treeNode, removed_nodes);
-
-    return saveModelWithNewName(mp_in, graph, model_path, "pruned");
+    if (processNode(treeNode, removed_nodes)) {
+      return saveModelWithNewName(mp_in, graph, model_path, "pruned");
+    } else {
+      std::string new_model_path = model_path;
+      return new_model_path;
+    }
   }
 
   static std::string match(std::string& model_path, uint8_t comparison_operator,
@@ -599,29 +648,29 @@ class TreeNode {
 };
 
 TreeNode* model2tree(Node* treeNode, int64_t node_id, TreeNode* parent) {
-  static const auto& input_n_targets = treeNode->i(Symbol("n_targets"));
-  static const auto& input_nodes_falsenodeids =
+  const auto& input_n_targets = treeNode->i(Symbol("n_targets"));
+  const auto& input_nodes_falsenodeids =
       treeNode->is(Symbol("nodes_falsenodeids"));
-  static const auto& input_nodes_featureids =
+  const auto& input_nodes_featureids =
       treeNode->is(Symbol("nodes_featureids"));
-  static const auto& input_nodes_hitrates =
+  const auto& input_nodes_hitrates =
       treeNode->fs(Symbol("nodes_hitrates"));
-  static const auto& input_nodes_missing_value_tracks_true =
+  const auto& input_nodes_missing_value_tracks_true =
       treeNode->is(Symbol("nodes_missing_value_tracks_true"));
-  static const auto& input_nodes_modes = treeNode->ss(Symbol("nodes_modes"));
-  static const auto& input_nodes_nodeids =
+  const auto& input_nodes_modes = treeNode->ss(Symbol("nodes_modes"));
+  const auto& input_nodes_nodeids =
       treeNode->is(Symbol("nodes_nodeids"));
-  static const auto& input_nodes_treeids =
+  const auto& input_nodes_treeids =
       treeNode->is(Symbol("nodes_treeids"));
-  static const auto& input_nodes_truenodeids =
+  const auto& input_nodes_truenodeids =
       treeNode->is(Symbol("nodes_truenodeids"));
-  static const auto& input_nodes_values = treeNode->fs(Symbol("nodes_values"));
-  static const auto& input_target_ids = treeNode->is(Symbol("target_ids"));
-  static const auto& input_target_nodeids =
+  const auto& input_nodes_values = treeNode->fs(Symbol("nodes_values"));
+  const auto& input_target_ids = treeNode->is(Symbol("target_ids"));
+  const auto& input_target_nodeids =
       treeNode->is(Symbol("target_nodeids"));
-  static const auto& input_target_treeids =
+  const auto& input_target_treeids =
       treeNode->is(Symbol("target_treeids"));
-  static const auto& input_target_weights =
+  const auto& input_target_weights =
       treeNode->fs(Symbol("target_weights"));
 
   // node_id -> target_id
@@ -694,7 +743,7 @@ class TreeEnsembleRegressor {
   std::vector<int64_t> target_treeids;
   std::vector<double> target_weights;
 
-  TreeEnsembleRegressor() : n_targets(1), post_transform("NONE"){};
+  TreeEnsembleRegressor() : n_targets(1), post_transform("NONE") {};
   //   std::string to_model(const onnx::ModelProto& input_model);
   static TreeEnsembleRegressor from_tree(TreeNode* root) {
     TreeEnsembleRegressor regressor;
@@ -851,7 +900,7 @@ class MergeChain {
         TreeNode* ancestor_node = it->second;
         ancestor_node->value = node->value;
 
-        std::cout << "intra-chain merging..." << std::endl;
+        // std::cout << "intra-chain merging..." << std::endl;
 
         TreeNode* parent = node->parent;
         if (left_leaf) {
@@ -1043,6 +1092,7 @@ void find_merge_chains(TreeNode* node,
         std::make_unique<MergeChain>(node, end_node, chain_value));
   }
 }
+
 struct TreeNodePtrHash {
   std::size_t operator()(const TreeNode* node) const {
     return std::hash<int>{}(node->id);
@@ -1130,7 +1180,7 @@ void inter_chain_merge(TreeNode* parent, MergeChain* left_chain,
     return;
   }
 
-  std::cout << "inter-chain merging..." << std::endl;
+  // std::cout << "inter-chain merging..." << std::endl;
 
   int left_length = 0;
   TreeNode* node = left_node;
@@ -1262,6 +1312,7 @@ class DTMergeRule {
     // copy regressor attribute from Node* treeNode, graph and model structure
     // remain unchanged
     toTree(treeNode, regressor);
+    delete_tree(root);
 
     return saveModelWithNewName(mp_in, graph, model_path, "merged");
   }
@@ -1272,7 +1323,6 @@ class DTMergeRule {
     loadModel(&mp_in, model_path, true);
     std::shared_ptr<Graph> graph = std::move(ImportModelProto(mp_in));
 
-    // ? 可以 skip 这一步
     bool found = false;
     Node* treeNode;
     graph->forEachNode([&found, &treeNode](Node* node) {
