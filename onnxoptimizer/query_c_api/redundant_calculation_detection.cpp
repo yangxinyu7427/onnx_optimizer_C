@@ -177,6 +177,14 @@ namespace onnx::optimization {
     // del nodes without input
     std::unordered_set<std::string> reachable_nodes;
     mark_reachable_nodes(g_input_changed,output_name[0],reachable_nodes);
+    // 支持经查询内冗余消除策略新增的input
+    for(int i=0;i<model_changed.mutable_graph()->input_size();i++){
+      auto input=model_changed.mutable_graph()->input(i);
+      if(input.name().find("input") != std::string::npos){
+        mark_reachable_nodes(g_input_changed,input.name(),reachable_nodes);
+        *model_input_changed.mutable_graph()->add_input()=input;
+      }
+    }
     for(int i=0;i<model_input_changed.mutable_graph()->node_size();i++){
       if(reachable_nodes.find(model_input_changed.mutable_graph()->node(i).name())==reachable_nodes.end()){
         model_input_changed.mutable_graph()->mutable_node()->DeleteSubrange(i,1);

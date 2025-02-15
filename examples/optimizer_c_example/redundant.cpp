@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[]) {
 
-  std::string path2="../examples/onnx_input_model/neo_nb2.onnx";
+  std::string path2="../examples/onnx_input_model/neo_dt.onnx";
   std::string path3="../examples/onnx_input_model/neo_lr2.onnx";
   std::string path4="../examples/onnx_input_model/news_lr.onnx";
   std::string path5="../examples/onnx_input_model/news_nb.onnx";
@@ -22,9 +22,11 @@ int main(int argc, char* argv[]) {
   std::string path13="../examples/onnx_input_model/model_reg.onnx";
   std::string pre="sgd_1_";
   std::string path_pre="../examples/onnx_input_model/model_reg_prefix.onnx";
+  std::string path14="../examples/onnx_input_model/1739346790.onnx";
+  std::string path15="../examples/onnx_input_model/model_prefix.onnx";
   //add_prefix_on_model(path13, path_pre, pre);
   //std::vector<std::string> tmp = check_redundant(path_pre,path12);
-  std::vector<std::string> tmp = check_redundant(path13,path6);
+  std::vector<std::string> tmp = check_redundant(path14,path15);
   //change_models(path_pre,outpath,inpath,tmp);
-  change_models(path13,outpath,inpath,tmp);
+  change_models(path14,outpath,inpath,tmp);
 }

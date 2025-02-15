@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
   std::string name1="sgd_1";
   std::string name2="lr_1";
   std::string name3="sgd_1_lr_1";
-  std::string name4="nb_1";
+  std::string name4="dt_1";
   std::string name5="model_lr_1_model_linear_1_model_lr_2";
 
   //  merge_double_models_with_predicate(path,predicate3,name1,name2);
