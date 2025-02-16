@@ -9,6 +9,7 @@
 #include <regex>
 #include <thread>
 #include <tuple>
+#include <unordered_set>
 
 #include "onnx/common/ir.h"
 #include "onnx/common/ir_pb_converter.cc"
@@ -49,12 +50,19 @@ std::string saveModelWithNewName(ModelProto& mp_in,
 //** Rule1: 分类树转回归树
 class DTConvertRule {
  public:
-  static void processNode(Node* node, int mode) {
+  static void processNode(Node* node, bool isForest, int mode) {
     auto classlabels_int64s = node->is(Symbol("classlabels_int64s"));
     auto class_treeids = node->is(Symbol("class_treeids"));
     auto class_ids = node->is(Symbol("class_ids"));
     auto class_nodeids = node->is(Symbol("class_nodeids"));
     auto class_weights = node->fs(Symbol("class_weights"));
+
+    int n_trees = 1;
+    if (isForest) {
+      std::unordered_set<int> unique_treeids(class_treeids.begin(),
+                                             class_treeids.end());
+      n_trees = unique_treeids.size();
+    }
 
     // ** convert clf attributes 2 reg attributes
     int64_t stride =
@@ -83,7 +91,8 @@ class DTConvertRule {
     target_weights.reserve(nleaf);
     if (stride == 1) {
       for (auto w : class_weights) {
-        w > 0.5 ? target_weights.push_back(1.0) : target_weights.push_back(0.0);
+        w > 0.5 / n_trees ? target_weights.push_back(1.0)
+                          : target_weights.push_back(0.0);
       }
     } else {
       for (int i = 0; i < nleaf; ++i) {
@@ -114,8 +123,6 @@ class DTConvertRule {
                                        std::string& model_path, int mode) {
     auto g_m = mp_in.mutable_graph();
     auto input = g_m->input();
-    // std::cout << input[0].mutable_type()->mutable_tensor_type()->elem_type()
-    //           << std::endl;
 
     // 输出
     onnx::ValueInfoProto output;
@@ -183,9 +190,9 @@ class DTConvertRule {
   }
 
   static std::string apply(ModelProto& mp_in, std::shared_ptr<Graph>& graph,
-                           Node* node, std::string& model_path) {
+                           Node* node, std::string& model_path, bool isForest) {
     if (node->hasAttribute(Symbol("classlabels_int64s"))) {
-      processNode(node, 0);
+      processNode(node, isForest, 0);
       return convertModelProto(mp_in, node, model_path, 0);
     } else if (node->hasAttribute(Symbol("classlabels_strings"))) {
       // todo: identity
@@ -202,14 +209,17 @@ class DTConvertRule {
     std::shared_ptr<Graph> graph = std::move(ImportModelProto(mp_in));
 
     bool found = false;
+    bool isForest = true;
     Node* treeNode;
-    graph->forEachNode([&found, &treeNode](Node* node) {
+    graph->forEachNode([&found, &isForest, &treeNode](Node* node) {
       if (node->hasAttribute(Symbol("class_treeids"))) {
         auto class_treeids = node->is(Symbol("class_treeids"));
-        if (node->s(Symbol("post_transform")) == "NONE" &&
-            std::all_of(
-                class_treeids.begin(), class_treeids.end(),
-                std::bind(std::equal_to<>(), std::placeholders::_1, 0))) {
+        if (node->s(Symbol("post_transform")) == "NONE") {
+          if (std::all_of(
+                  class_treeids.begin(), class_treeids.end(),
+                  std::bind(std::equal_to<>(), std::placeholders::_1, 0))) {
+            isForest = false;
+          }
           found = true;
           treeNode = node;
         }
@@ -217,7 +227,7 @@ class DTConvertRule {
     });
 
     if (found)
-      output_model_path = apply(mp_in, graph, treeNode, model_path);
+      output_model_path = apply(mp_in, graph, treeNode, model_path, isForest);
 
     return output_model_path;
   }
@@ -281,14 +291,13 @@ class DTPruneRule {
   }
 
   static bool processNode(Node* node, std::vector<std::string>& removed_nodes) {
-    // 判断树是否被完全剪枝
     int leaf_false_count =
         std::count(removed_nodes.begin(), removed_nodes.end(), "LEAF_FALSE");
     int leaf_true_count =
         std::count(removed_nodes.begin(), removed_nodes.end(), "LEAF_TRUE");
-    if (leaf_false_count == 0 || leaf_true_count == 0) {
-      return false;
-    }
+    // if (leaf_false_count == 0 || leaf_true_count == 0) {
+    //   return false;
+    // }
     int leaf_count = leaf_false_count + leaf_true_count;
 
     int64_t input_n_targets = node->i(Symbol("n_targets"));
@@ -545,8 +554,7 @@ class RFPruneRule {
     return tree_intervals;
   }
 
-  static int pruning(size_t tree_no, const std::tuple<int, int>&
-  tree_interval,
+  static int pruning(size_t tree_no, const std::tuple<int, int>& tree_interval,
                      size_t node_id, size_t depth,
                      std::vector<std::string>& result_nodes, Node* treeNode,
                      uint8_t comparison_operator, float threshold) {
@@ -589,8 +597,7 @@ class RFPruneRule {
     } else {
       size_t left_node_id = left_nodes[node_id];
       int left_result =
-          pruning(tree_no, tree_interval, left_node_id, depth + 1,
-          result_nodes,
+          pruning(tree_no, tree_interval, left_node_id, depth + 1, result_nodes,
                   treeNode, comparison_operator, threshold);
 
       size_t right_node_id = right_nodes[node_id];
@@ -620,21 +627,21 @@ class RFPruneRule {
       Node* node, std::vector<std::vector<std::string>>& result_nodes_list,
       std::vector<std::tuple<int, int>>& tree_intervals) {
     const int tree_count = tree_intervals.size();
-    int pruned_tree_count = tree_intervals.size();
+    // int pruned_tree_count = tree_intervals.size();
     std::vector<int> tree_leaf_counts;
     for (const auto& removed_nodes : result_nodes_list) {
       int leaf_false_count =
           std::count(removed_nodes.begin(), removed_nodes.end(), "LEAF_FALSE");
       int leaf_true_count =
           std::count(removed_nodes.begin(), removed_nodes.end(), "LEAF_TRUE");
-      if (leaf_false_count == 0 || leaf_true_count == 0) {
-        pruned_tree_count--;
-      }
+      // if (leaf_false_count == 0 || leaf_true_count == 0) {
+      //   pruned_tree_count--;
+      // }
       tree_leaf_counts.push_back(leaf_false_count + leaf_true_count);
     }
-    if (pruned_tree_count == 0) {
-      return false;
-    }
+    // if (pruned_tree_count == 0) {
+    //   return false;
+    // }
 
     int64_t input_n_targets = node->i(Symbol("n_targets"));
     std::vector<int64_t> input_nodes_falsenodeids =
@@ -880,7 +887,7 @@ class RFPruneRule {
     // auto end = std::chrono::high_resolution_clock::now();
     // std::chrono::duration<double, std::milli> duration = end - start;
     // std::cout << "pruning time cost (s): " << duration.count() / 1000
-              // << std::endl;
+    // << std::endl;
     if (processNode(treeNode, result_nodes_list, tree_intervals)) {
       return saveModelWithNewName(mp_in, graph, model_path, "pruned");
     } else {
