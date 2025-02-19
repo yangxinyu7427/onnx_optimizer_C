@@ -522,7 +522,6 @@ DTPruneRule::ComparisonFunc DTPruneRule::comparison_funcs[] = {
     [](float x, float y) { return x >= y; }};
 
 //** Rule2.2: 随机森林剪枝
-// todo
 class RFPruneRule {
  private:
   using ComparisonFunc = bool (*)(float, float);
@@ -581,10 +580,10 @@ class RFPruneRule {
 
     if (is_leaf) {
       int target_idx = -1;
-      for (size_t ti = 0; ti < target_nodeids.size(); ++ti) {
-        size_t ni = target_nodeids[ti];
+      for (int ti = 0; ti < target_nodeids.size(); ++ti) {
+        int ni = target_nodeids[ti];
         if (ni == node_id && target_treeids[ti] == tree_no) {
-          target_idx = static_cast<int>(ti);
+          target_idx = ti;
           break;
         }
       }
@@ -594,6 +593,7 @@ class RFPruneRule {
       result_nodes[node_id] = (result == 1) ? "LEAF_TRUE" : "LEAF_FALSE";
 
       return result;
+    
     } else {
       size_t left_node_id = left_nodes[node_id];
       int left_result =
@@ -792,7 +792,7 @@ class RFPruneRule {
       int i = 0;
       for (size_t ii = tree_start; ii < tree_end; ++ii) {
         if (new_ids[i].node != "REMOVED") {
-          int64_t truenodeid = new_ids[input_nodes_truenodeids[ii]].id;
+          int truenodeid = new_ids[input_nodes_truenodeids[ii]].id;
           nodes_truenodeids.push_back(truenodeid != -1 ? truenodeid : 0);
         }
         ++i;
