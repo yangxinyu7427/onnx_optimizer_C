@@ -16,25 +16,17 @@
 #include "onnx/common/ir_pb_converter.h"
 #include "onnx/proto_utils.h"
 
-//===--------------------------------------------------------------------===//
-// ** Utils
-//===--------------------------------------------------------------------===//
-// **获取new model name
-std::string getNewmodelname(std::string onnx_model_path, std::string suffix) {
-  return onnx_model_path.substr(0, onnx_model_path.find(".onnx")) + "_" +
-         suffix + ".onnx";
-}
-// ** use in pruning
+namespace onnx::optimization {
+
 struct NodeID {
   int id;
   std::string node;
 };
 
-//===--------------------------------------------------------------------===//
-// ** Optimize Rules
-//===--------------------------------------------------------------------===//
-
-namespace onnx::optimization {
+std::string getNewmodelname(std::string onnx_model_path, std::string suffix) {
+  return onnx_model_path.substr(0, onnx_model_path.find(".onnx")) + "_" +
+         suffix + ".onnx";
+}
 
 std::string saveModelWithNewName(ModelProto& mp_in,
                                  std::shared_ptr<Graph>& graph,
@@ -47,7 +39,9 @@ std::string saveModelWithNewName(ModelProto& mp_in,
   return new_model_path;
 }
 
-//** Rule1: 分类树转回归树
+/**
+ * @brief 分类树转回归树(单棵决策树、随机森林)
+ */
 class DTConvertRule {
  public:
   static void processNode(Node* node, bool isForest, int mode) {
@@ -233,7 +227,11 @@ class DTConvertRule {
   }
 };
 
-//** Rule2.1: 决策树剪枝
+/**
+ * @brief 决策树剪枝(单棵决策树、随机森林)
+ * @deprecated DTPruneRule
+ */
+//** Rule2.1: 单棵树剪枝
 class DTPruneRule {
  private:
   using ComparisonFunc = bool (*)(float, float);
@@ -554,9 +552,9 @@ class RFPruneRule {
   }
 
   static int pruning(size_t tree_no, const std::tuple<int, int>& tree_interval,
-                     size_t node_id, size_t depth,
-                     std::vector<std::string>& result_nodes, Node* treeNode,
-                     uint8_t comparison_operator, float threshold) {
+                     size_t node_id, std::vector<std::string>& result_nodes,
+                     Node* treeNode, uint8_t comparison_operator,
+                     float threshold) {
     int tree_start = std::get<0>(tree_interval);
     int tree_end = std::get<1>(tree_interval);
 
@@ -593,17 +591,17 @@ class RFPruneRule {
       result_nodes[node_id] = (result == 1) ? "LEAF_TRUE" : "LEAF_FALSE";
 
       return result;
-    
+
     } else {
       size_t left_node_id = left_nodes[node_id];
       int left_result =
-          pruning(tree_no, tree_interval, left_node_id, depth + 1, result_nodes,
-                  treeNode, comparison_operator, threshold);
+          pruning(tree_no, tree_interval, left_node_id, result_nodes, treeNode,
+                  comparison_operator, threshold);
 
       size_t right_node_id = right_nodes[node_id];
       int right_result =
-          pruning(tree_no, tree_interval, right_node_id, depth + 1,
-                  result_nodes, treeNode, comparison_operator, threshold);
+          pruning(tree_no, tree_interval, right_node_id, result_nodes, treeNode,
+                  comparison_operator, threshold);
 
       if (left_result == 0 && right_result == 0) {
         result_nodes[node_id] = "LEAF_FALSE";
@@ -685,166 +683,60 @@ class RFPruneRule {
       new_ids_list.push_back(new_ids);
     }
 
-    // 4. 构建 nodes_falsenodeids
     std::vector<int64_t> nodes_falsenodeids;
+    std::vector<int64_t> nodes_featureids;
+    std::vector<double> nodes_hitrates;
+    std::vector<int64_t> nodes_missing_value_tracks_true;
+    std::vector<std::string> nodes_modes;
+    std::vector<int64_t> nodes_nodeids;
+    std::vector<int64_t> nodes_treeids;
+    std::vector<int64_t> nodes_truenodeids;
+    std::vector<double> nodes_values;
+    std::vector<int64_t> target_nodeids;
+    std::vector<int64_t> target_treeids;
+    std::vector<double> target_weights;
+
     for (size_t tree_no = 0; tree_no < tree_count; ++tree_no) {
       const auto& [tree_start, tree_end] = tree_intervals[tree_no];
       const auto& new_ids = new_ids_list[tree_no];
       int i = 0;
       for (size_t ii = tree_start; ii < tree_end; ++ii) {
-        if (new_ids[i].node != "REMOVED") {
+        if (new_ids[i].id != -1) {
           int64_t falsenodeid = new_ids[input_nodes_falsenodeids[ii]].id;
           nodes_falsenodeids.push_back(falsenodeid != -1 ? falsenodeid : 0);
-        }
-        ++i;
-      }
-    }
 
-    // 5. 构建 nodes_featureids
-    std::vector<int64_t> nodes_featureids;
-    for (size_t tree_no = 0; tree_no < tree_count; ++tree_no) {
-      const auto& [tree_start, tree_end] = tree_intervals[tree_no];
-      const auto& new_ids = new_ids_list[tree_no];
-      int i = 0;
-      for (size_t ii = tree_start; ii < tree_end; ++ii) {
-        if (new_ids[i].id != -1) {
           nodes_featureids.push_back(
               new_ids[i].node == "BRANCH_LEQ" ? input_nodes_featureids[ii] : 0);
-        }
-        ++i;
-      }
-    }
-
-    // 6. 构建 nodes_hitrates
-    std::vector<double> nodes_hitrates;
-    for (size_t tree_no = 0; tree_no < tree_count; ++tree_no) {
-      const auto& [tree_start, tree_end] = tree_intervals[tree_no];
-      const auto& new_ids = new_ids_list[tree_no];
-      int i = 0;
-      for (size_t ii = tree_start; ii < tree_end; ++ii) {
-        if (new_ids[i].id != -1) {
           nodes_hitrates.push_back(input_nodes_hitrates[ii]);
-        }
-        ++i;
-      }
-    }
-
-    // 7. 构建 nodes_missing_value_tracks_true
-    std::vector<int64_t> nodes_missing_value_tracks_true;
-    for (size_t tree_no = 0; tree_no < tree_count; ++tree_no) {
-      const auto& [tree_start, tree_end] = tree_intervals[tree_no];
-      const auto& new_ids = new_ids_list[tree_no];
-      int i = 0;
-      for (size_t ii = tree_start; ii < tree_end; ++ii) {
-        if (new_ids[i].id != -1) {
           nodes_missing_value_tracks_true.push_back(
               input_nodes_missing_value_tracks_true[ii]);
-        }
-        ++i;
-      }
-    }
-
-    // 8. 构建 nodes_modes
-    std::vector<std::string> nodes_modes;
-    for (size_t tree_no = 0; tree_no < tree_count; ++tree_no) {
-      const auto& new_ids = new_ids_list[tree_no];
-
-      for (const auto& new_id : new_ids) {
-        if (new_id.id != -1) {
-          nodes_modes.push_back(new_id.node == "BRANCH_LEQ" ? "BRANCH_LEQ"
-                                                            : "LEAF");
-        }
-      }
-    }
-
-    // 9. 构建 nodes_nodeids
-    std::vector<int64_t> nodes_nodeids;
-    for (size_t tree_no = 0; tree_no < tree_count; ++tree_no) {
-      const auto& [tree_start, tree_end] = tree_intervals[tree_no];
-      const auto& new_ids = new_ids_list[tree_no];
-      int i = 0;
-      for (size_t ii = tree_start; ii < tree_end; ++ii) {
-        if (new_ids[i].id != -1) {
           nodes_nodeids.push_back(new_ids[i].id);
-        }
-        ++i;
-      }
-    }
-
-    // 10. 构建 nodes_treeids
-    std::vector<int64_t> nodes_treeids;
-    for (size_t tree_no = 0; tree_no < tree_count; ++tree_no) {
-      const auto& [tree_start, tree_end] = tree_intervals[tree_no];
-      const auto& new_ids = new_ids_list[tree_no];
-      int i = 0;
-      for (size_t ii = tree_start; ii < tree_end; ++ii) {
-        if (new_ids[i].id != -1) {
           nodes_treeids.push_back(input_nodes_treeids[ii]);
-        }
-        ++i;
-      }
-    }
-    // 11. 构建 nodes_truenodeids
-    std::vector<int64_t> nodes_truenodeids;
-    for (size_t tree_no = 0; tree_no < tree_count; ++tree_no) {
-      const auto& [tree_start, tree_end] = tree_intervals[tree_no];
-      const auto& new_ids = new_ids_list[tree_no];
-      int i = 0;
-      for (size_t ii = tree_start; ii < tree_end; ++ii) {
-        if (new_ids[i].node != "REMOVED") {
+
           int truenodeid = new_ids[input_nodes_truenodeids[ii]].id;
           nodes_truenodeids.push_back(truenodeid != -1 ? truenodeid : 0);
-        }
-        ++i;
-      }
-    }
 
-    // 12. 构建 nodes_values
-    std::vector<double> nodes_values;
-    for (size_t tree_no = 0; tree_no < tree_count; ++tree_no) {
-      const auto& [tree_start, tree_end] = tree_intervals[tree_no];
-      const auto& new_ids = new_ids_list[tree_no];
-      int i = 0;
-      for (size_t ii = tree_start; ii < tree_end; ++ii) {
-        if (new_ids[i].id != -1) {
           nodes_values.push_back(
               new_ids[i].node == "BRANCH_LEQ" ? input_nodes_values[ii] : 0);
+          nodes_modes.push_back(new_ids[i].node == "BRANCH_LEQ" ? "BRANCH_LEQ"
+                                                                : "LEAF");
+          if (new_ids[i].node != "BRANCH_LEQ") {
+            target_nodeids.push_back(new_ids[i].id);
+            target_weights.push_back(
+                new_ids[i].node == "LEAF_TRUE" ? 1.0f / tree_count : 0.0f);
+          }
         }
         ++i;
       }
     }
 
-    // 14. 构建 target_ids
     std::vector<int64_t> target_ids(
         std::accumulate(tree_leaf_counts.begin(), tree_leaf_counts.end(), 0),
         0);
-
-    // 15. 构建 target_nodeids
-    std::vector<int64_t> target_nodeids;
-    for (const auto& new_ids : new_ids_list) {
-      for (const auto& new_id : new_ids) {
-        if (new_id.node == "LEAF_FALSE" || new_id.node == "LEAF_TRUE") {
-          target_nodeids.push_back(new_id.id);
-        }
-      }
-    }
-
-    // 16. 构建 target_treeids
     std::vector<int64_t> target_treeids;
     for (size_t tree_no = 0; tree_no < tree_leaf_counts.size(); ++tree_no) {
       target_treeids.insert(target_treeids.end(), tree_leaf_counts[tree_no],
                             tree_no);
-    }
-
-    // 17. 构建 target_weights
-    std::vector<double> target_weights;
-    for (const auto& new_ids : new_ids_list) {
-      for (const auto& new_id : new_ids) {
-        if (new_id.node == "LEAF_FALSE" || new_id.node == "LEAF_TRUE") {
-          target_weights.push_back(
-              new_id.node == "LEAF_TRUE" ? 1.0f / tree_count : 0.0f);
-        }
-      }
     }
 
     node->is_(Symbol("nodes_falsenodeids"), std::move(nodes_falsenodeids));
@@ -877,17 +769,25 @@ class RFPruneRule {
       int end = std::get<1>(interval);
       result_nodes_list.push_back(std::vector<std::string>(end - start, ""));
     }
-    // auto start = std::chrono::high_resolution_clock::now();
+    // timer
+    /*     auto start = std::chrono::high_resolution_clock::now();
+        for (size_t tree_no = 0; tree_no < result_nodes_list.size(); ++tree_no)
+       { auto& result_nodes = result_nodes_list[tree_no]; const auto&
+       tree_interval = tree_intervals[tree_no]; pruning(tree_no, tree_interval,
+       0, result_nodes, treeNode, comparison_operator, threshold);
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> duration = end - start;
+        std::cout << "pruning time cost (s): " << duration.count() / 1000
+        << std::endl; */
+
     for (size_t tree_no = 0; tree_no < result_nodes_list.size(); ++tree_no) {
       auto& result_nodes = result_nodes_list[tree_no];
       const auto& tree_interval = tree_intervals[tree_no];
-      pruning(tree_no, tree_interval, 0, 0, result_nodes, treeNode,
+      pruning(tree_no, tree_interval, 0, result_nodes, treeNode,
               comparison_operator, threshold);
     }
-    // auto end = std::chrono::high_resolution_clock::now();
-    // std::chrono::duration<double, std::milli> duration = end - start;
-    // std::cout << "pruning time cost (s): " << duration.count() / 1000
-    // << std::endl;
+
     if (processNode(treeNode, result_nodes_list, tree_intervals)) {
       return saveModelWithNewName(mp_in, graph, model_path, "pruned");
     } else {
@@ -933,8 +833,10 @@ RFPruneRule::ComparisonFunc RFPruneRule::comparison_funcs[] = {
     [](float x, float y) { return x > y; },
     [](float x, float y) { return x >= y; }};
 
-//** 特征下推-未启用
-class DTPushdownRule {
+/**
+ * 特征下推-未启用
+ * /
+/* class DTPushdownRule {
  public:
   static void pushdown(std::shared_ptr<Graph>& graph, Node* node) {
     // 1. get used featureids
@@ -989,9 +891,11 @@ class DTPushdownRule {
     return output_model_path;
   }
 };
+ */
 
-//** Rule3: 合并
-// -------------------------
+/**
+ * Rule3: 合并
+ */
 class TreeNode {
  public:
   int id;          // 节点ID
@@ -1639,7 +1543,6 @@ void inter_chain_merge(TreeNode* parent, MergeChain* left_chain,
   right_chain->update_samples();
 }
 
-// --------------------------
 class DTMergeRule {
  public:
   static std::string apply(ModelProto& mp_in, std::shared_ptr<Graph>& graph,
