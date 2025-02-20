@@ -41,7 +41,7 @@ std::string optimize_on_decision_tree_predicate_prune(std::string& input_model_p
 std::string optimize_on_decision_tree_predicate_merge(std::string& input_model_path);
 
 
-std::string optimize_on_random_forest_predicate_prune(std::string& input_model_path, uint8_t comparison_operator, float threshold);
+std::string optimize_on_random_forest_predicate_prune(std::string& input_model_path, uint8_t comparison_operator, float threshold, int threads_count = 1);
 
 #endif  // ONNX_OPTIMIZER_OPTIMIZE_C_API_H
 
