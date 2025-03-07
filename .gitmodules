@@ -3,4 +3,4 @@
 	url = https://github.com/protocolbuffers/protobuf.git
 [submodule "third_party/onnx"]
 	path = third_party/onnx
-	url = git@github.com:lovelynewlife/onnx.git
+	url = https://github.com/lovelynewlife/onnx.git

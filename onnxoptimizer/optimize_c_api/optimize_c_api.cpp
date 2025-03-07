@@ -54,25 +54,24 @@ void add_prefix_on_model(std::string& changed_model_path, std::string& output_mo
     onnx::optimization::add_prefix_on_model(changed_model_path, output_model_path, prefix);
 }
 
-/// @brief 
-/// @param input_model_path 
-/// @param comparison_operator 1: ==, 2: <, 3: <=, 4: >, 5: >= 
-/// @param threshold 
-/// @param features
-/// @return optimized-model path
 std::string optimize_on_decision_tree_predicate(std::string& input_model_path, uint8_t comparison_operator,
-                float threshold) {
+                float threshold, int threads_count) {
     std::string mp1 = onnx::optimization::DTConvertRule::match(input_model_path);
-	std::string mp2 = onnx::optimization::DTPruneRule::match(mp1, comparison_operator, threshold);
-	return onnx::optimization::DTMergeRule::match(mp2);
-
-	// std::string mp1 = onnx::optimization::DTPruneRule::match(input_model_path, comparison_operator, threshold);
-	// return onnx::optimization::DTMergeRule::match(mp1);
-	// return onnx::optimization::DTMergeRule::match(mp3);
-    // return onnx::optimization::DTConvertRule::match(input_model_path);
-    // return onnx::optimization::DTPruneRule::match(input_model_path, comparison_operator, threshold);
-
-    // return onnx::optimization::DTConvertRule::match(input_model_path);
+	std::string mp2 = onnx::optimization::DTPruneRule::match(mp1, comparison_operator, threshold, threads_count);
+	return onnx::optimization::DTMergeRule::match(mp2, threads_count);
 }
+
+std::string optimize_on_decision_tree_predicate_convert(std::string& input_model_path){
+    return onnx::optimization::DTConvertRule::match(input_model_path);
+}
+
+std::string optimize_on_decision_tree_predicate_prune(std::string& input_model_path, uint8_t comparison_operator, float threshold, int threads_count){
+    return onnx::optimization::DTPruneRule::match(input_model_path, comparison_operator, threshold, threads_count);
+}
+
+std::string optimize_on_decision_tree_predicate_merge(std::string& input_model_path, int threads_count){
+    return onnx::optimization::DTMergeRule::match(input_model_path, threads_count);
+}
+
 
 // -----------------------
