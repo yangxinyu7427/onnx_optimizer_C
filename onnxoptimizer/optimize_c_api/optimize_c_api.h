@@ -34,8 +34,19 @@ void change_models(std::string& changed_model_path,std::string& output_model_pat
                 const std::vector<std::string>& output_name);
 void add_prefix_on_model(std::string& changed_model_path, std::string& output_model_path, std::string& prefix);
 
-//--------------------------
+/**
+ * @brief retree optimization 
+ *        1. convert
+ *        2. prune
+ *        3. merge
+ * @param input_model_path
+ * @param comparison_operator 1: ==, 2: <, 3: <=, 4: >, 5: >= 
+ * @param threshold 
+ * @param threads_count default=1 
+ * @return optimized model path
+ */
 std::string optimize_on_decision_tree_predicate(std::string& input_model_path, uint8_t comparison_operator, float threshold, int threads_count = 1);
+
 std::string optimize_on_decision_tree_predicate_convert(std::string& input_model_path);
 std::string optimize_on_decision_tree_predicate_prune(std::string& input_model_path, uint8_t comparison_operator, float threshold, int threads_count = 1);
 std::string optimize_on_decision_tree_predicate_merge(std::string& input_model_path, int threads_count = 1);

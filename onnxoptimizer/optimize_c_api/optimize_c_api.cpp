@@ -54,12 +54,6 @@ void add_prefix_on_model(std::string& changed_model_path, std::string& output_mo
     onnx::optimization::add_prefix_on_model(changed_model_path, output_model_path, prefix);
 }
 
-/// @brief 
-/// @param input_model_path 
-/// @param comparison_operator 1: ==, 2: <, 3: <=, 4: >, 5: >= 
-/// @param threshold 
-/// @param features
-/// @return optimized-model path
 std::string optimize_on_decision_tree_predicate(std::string& input_model_path, uint8_t comparison_operator,
                 float threshold, int threads_count) {
     std::string mp1 = onnx::optimization::DTConvertRule::match(input_model_path);
